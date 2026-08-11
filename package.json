@@ -1,0 +1,45 @@
+{
+  "name": "notes-planner-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": "22.23.1",
+    "pnpm": "10.15.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "tauri": "tauri",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:ipc": "node scripts/fixture-harness.mjs ipc",
+    "test:storage": "node scripts/run-storage-tests.mjs",
+    "test:storage-failure": "node scripts/fixture-harness.mjs storage-failure",
+    "test:e2e": "playwright test",
+    "package": "tauri build --bundles deb",
+    "verify:ubuntu": "bash scripts/verify-ubuntu.sh",
+    "verify:deb": "bash scripts/verify-deb.sh"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.6",
+    "@playwright/test": "1.61.1",
+    "@tauri-apps/cli": "2.11.4",
+    "@types/node": "22.15.29",
+    "typescript": "5.9.3",
+    "vite": "6.4.3",
+    "vitest": "3.2.7"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.11.1"
+  }
+}

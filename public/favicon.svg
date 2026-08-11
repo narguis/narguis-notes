@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-label="Notes Planner">
+  <rect width="16" height="16" rx="2" fill="#1c1c1a" />
+  <path d="M4 4h8M4 8h8M4 12h5" stroke="#f7f7f5" stroke-linecap="round" stroke-width="1.5" />
+</svg>

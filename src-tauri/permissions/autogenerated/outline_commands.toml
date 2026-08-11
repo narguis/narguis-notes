@@ -1,0 +1,50 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-list-planner-lines"
+description = "Enables the list_planner_lines command without any pre-configured scope."
+commands.allow = ["list_planner_lines"]
+[[permission]]
+identifier = "allow-create-planner-line"
+description = "Enables the create_planner_line command without any pre-configured scope."
+commands.allow = ["create_planner_line"]
+[[permission]]
+identifier = "allow-update-planner-line"
+description = "Enables the update_planner_line command without any pre-configured scope."
+commands.allow = ["update_planner_line"]
+[[permission]]
+identifier = "allow-delete-planner-line"
+description = "Enables the delete_planner_line command without any pre-configured scope."
+commands.allow = ["delete_planner_line"]
+[[permission]]
+identifier = "allow-move-planner-line"
+description = "Enables the move_planner_line command without any pre-configured scope."
+commands.allow = ["move_planner_line"]
+[[permission]]
+identifier = "allow-set-planner-line-collapsed"
+description = "Enables the set_planner_line_collapsed command without any pre-configured scope."
+commands.allow = ["set_planner_line_collapsed"]
+[[permission]]
+identifier = "allow-set-planner-line-time"
+description = "Enables the set_planner_line_time command without any pre-configured scope."
+commands.allow = ["set_planner_line_time"]
+[[permission]]
+identifier = "allow-list-task-templates"
+description = "Enables the list_task_templates command without any pre-configured scope."
+commands.allow = ["list_task_templates"]
+[[permission]]
+identifier = "allow-create-task-template"
+description = "Enables the create_task_template command without any pre-configured scope."
+commands.allow = ["create_task_template"]
+[[permission]]
+identifier = "allow-update-task-template"
+description = "Enables the update_task_template command without any pre-configured scope."
+commands.allow = ["update_task_template"]
+[[permission]]
+identifier = "allow-delete-task-template"
+description = "Enables the delete_task_template command without any pre-configured scope."
+commands.allow = ["delete_task_template"]
+[[permission]]
+identifier = "allow-insert-task-template-copy"
+description = "Enables the insert_task_template_copy command without any pre-configured scope."
+commands.allow = ["insert_task_template_copy"]
