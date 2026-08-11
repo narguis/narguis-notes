@@ -37,6 +37,10 @@ pub fn run(app_data_directory: &Path) -> Result<(), AppError> {
         title: PlannerLineTitle("root".to_owned()),
         description: None,
         time_of_day_minutes: None,
+        deadline_days: None,
+        deadline_date: None,
+        source_task_id: None,
+        repeat_days: String::new(),
     })?;
     let child = database.create_planner_line(&CreatePlannerLineRequest {
         date: date.clone(),
@@ -45,6 +49,10 @@ pub fn run(app_data_directory: &Path) -> Result<(), AppError> {
         title: PlannerLineTitle("child".to_owned()),
         description: Some(PlannerLineDescription("child description".to_owned())),
         time_of_day_minutes: Some(TimeOfDayMinutes(571)),
+        deadline_days: None,
+        deadline_date: None,
+        source_task_id: None,
+        repeat_days: String::new(),
     })?;
     let later_root = database.create_planner_line(&CreatePlannerLineRequest {
         date: date.clone(),
@@ -53,6 +61,10 @@ pub fn run(app_data_directory: &Path) -> Result<(), AppError> {
         title: PlannerLineTitle("later root".to_owned()),
         description: None,
         time_of_day_minutes: None,
+        deadline_days: None,
+        deadline_date: None,
+        source_task_id: None,
+        repeat_days: String::new(),
     })?;
     database.set_planner_line_collapsed(&SetPlannerLineCollapsedRequest {
         id: root.id.clone(),
@@ -62,6 +74,8 @@ pub fn run(app_data_directory: &Path) -> Result<(), AppError> {
         title: TaskTemplateTitle(TEMPLATE_TITLE.to_owned()),
         body: TaskTemplateBody(TEMPLATE_BODY.to_owned()),
         time_of_day_minutes: Some(720),
+        deadline_days: None,
+        repeat_days: String::new(),
     })?;
     let copied_line = database.insert_task_template_copy(&InsertTaskTemplateCopyRequest {
         template_id: template.id.clone(),
@@ -107,6 +121,8 @@ pub fn run(app_data_directory: &Path) -> Result<(), AppError> {
         title: TaskTemplateTitle("Changed template".to_owned()),
         body: TaskTemplateBody("Changed body".to_owned()),
         time_of_day_minutes: None,
+        deadline_days: None,
+        repeat_days: String::new(),
     })?;
     restarted_database.delete_task_template(&template.id)?;
     drop(restarted_database);

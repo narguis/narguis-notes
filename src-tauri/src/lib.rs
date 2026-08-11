@@ -56,7 +56,7 @@ pub fn run() {
             }
         }),
         Err(error) => {
-            eprintln!("failed to run Notes Planner: {error}");
+            eprintln!("failed to run Narguis Notes App: {error}");
             std::process::exit(1);
         }
     }

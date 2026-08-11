@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Notes Planner",
+  "productName": "Narguis Notes App",
   "version": "0.1.0",
   "identifier": "com.narguis.notes.desktop",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Notes Planner",
+        "title": "Narguis Notes App",
         "width": 800,
         "height": 600,
         "resizable": true

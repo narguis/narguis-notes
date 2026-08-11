@@ -125,7 +125,7 @@ xvfb-run -a dbus-run-session -- sh -eu -c '
   trap "kill $launcher_pid 2>/dev/null || true" EXIT
   attempt=0
   while [ "$attempt" -lt 20 ]; do
-    if xdotool search --name "Notes Planner" >/dev/null 2>&1; then
+    if xdotool search --name "Narguis Notes App" >/dev/null 2>&1; then
       exit 0
     fi
     attempt=$((attempt + 1))

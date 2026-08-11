@@ -58,6 +58,10 @@ fn line_request(
         title: PlannerLineTitle(title.to_owned()),
         description: None,
         time_of_day_minutes: time_of_day_minutes.map(TimeOfDayMinutes),
+        deadline_days: None,
+        deadline_date: None,
+        source_task_id: None,
+        repeat_days: String::new(),
     }
 }
 

@@ -131,6 +131,17 @@ impl CivilDateInput {
     fn validate(&self) -> Result<(), AppError> {
         self.as_str().map(|_| ())
     }
+
+    pub fn add_days(&self, days: u16) -> Result<Self, AppError> {
+        let mut date = self.clone();
+        for _ in 0..days {
+            date = match date {
+                Self::Valid(value) => Self::Valid(value.next_day()?),
+                Self::Invalid => return Err(AppError::invalid_date()),
+            }
+        }
+        Ok(date)
+    }
 }
 
 impl NoteTitle {

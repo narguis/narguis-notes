@@ -51,6 +51,8 @@ fn inserts_an_independent_template_copy_that_survives_template_edit_and_delete()
             title: TaskTemplateTitle("Review launch checklist".to_owned()),
             body: TaskTemplateBody("Confirm desktop launch".to_owned()),
             time_of_day_minutes: Some(571),
+            deadline_days: None,
+            repeat_days: String::new(),
         })
         .expect("template creates");
 
@@ -69,6 +71,8 @@ fn inserts_an_independent_template_copy_that_survives_template_edit_and_delete()
             title: TaskTemplateTitle("Changed template".to_owned()),
             body: TaskTemplateBody("Changed body".to_owned()),
             time_of_day_minutes: None,
+            deadline_days: None,
+            repeat_days: String::new(),
         })
         .expect("template updates");
     database
@@ -111,6 +115,8 @@ fn delete_failure_keeps_template_and_inserted_line_unchanged() {
             title: TaskTemplateTitle("Review launch checklist".to_owned()),
             body: TaskTemplateBody("Confirm desktop launch".to_owned()),
             time_of_day_minutes: Some(571),
+            deadline_days: None,
+            repeat_days: String::new(),
         })
         .expect("template creates");
     let inserted_line = database

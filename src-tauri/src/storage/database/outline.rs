@@ -47,16 +47,23 @@ fn read_time(value: Option<i64>) -> Result<Option<TimeOfDayMinutes>, rusqlite::E
         .transpose()
 }
 
+fn read_date(value: Option<String>) -> Result<Option<CivilDateInput>, rusqlite::Error> {
+    value
+        .map(|date| CivilDateInput::parse(&date).map_err(|_| rusqlite::Error::InvalidQuery))
+        .transpose()
+}
+
 fn load_line(
     connection: &rusqlite::Connection,
     id: &PlannerLineId,
 ) -> Result<Option<StoredLine>, AppError> {
     connection
         .query_row(
-            "SELECT id, date, parent_id, sibling_key, title, description, time_of_day_minutes, is_collapsed FROM planner_lines WHERE id = ?1",
+            "SELECT id, date, parent_id, sibling_key, title, description, time_of_day_minutes, is_collapsed, deadline_days, deadline_date, repeat_days, source_task_id FROM planner_lines WHERE id = ?1",
             params![id.0],
             |row| {
                 let time: Option<i64> = row.get(6)?;
+                let deadline_days: Option<i64> = row.get(8)?;
                 Ok(StoredLine { dto: PlannerLineDto {
                     id: PlannerLineId(row.get(0)?),
                     date: CivilDateInput::parse(&row.get::<_, String>(1)?).map_err(|_| rusqlite::Error::InvalidQuery)?,
@@ -66,6 +73,10 @@ fn load_line(
                     description: row.get::<_, Option<String>>(5)?.map(crate::dto::PlannerLineDescription),
                     time_of_day_minutes: read_time(time)?,
                     is_collapsed: row.get::<_, i64>(7)? != 0,
+                    deadline_days: deadline_days.map(|value| u16::try_from(value).map_err(|_| rusqlite::Error::InvalidQuery)).transpose()?,
+                    deadline_date: read_date(row.get(9)?)?,
+                    repeat_days: row.get(10)?,
+                    source_task_id: row.get::<_, Option<String>>(11)?.map(crate::dto::TaskTemplateId),
                 }})
             },
         )
@@ -80,11 +91,12 @@ impl Database {
     ) -> Result<Vec<PlannerLineDto>, AppError> {
         let date = date.as_str()?;
         let mut statement = self.connection.prepare(
-            "SELECT id, date, parent_id, sibling_key, title, description, time_of_day_minutes, is_collapsed FROM planner_lines WHERE date = ?1 ORDER BY sibling_key COLLATE BINARY ASC, id ASC",
+            "SELECT id, date, parent_id, sibling_key, title, description, time_of_day_minutes, is_collapsed, deadline_days, deadline_date, repeat_days, source_task_id FROM planner_lines WHERE date = ?1 ORDER BY sibling_key COLLATE BINARY ASC, id ASC",
         ).map_err(|_| AppError::storage_read_failed())?;
         let rows = statement
             .query_map(params![date], |row| {
                 let time: Option<i64> = row.get(6)?;
+                let deadline_days: Option<i64> = row.get(8)?;
                 Ok(StoredLine {
                     dto: PlannerLineDto {
                         id: PlannerLineId(row.get(0)?),
@@ -98,6 +110,16 @@ impl Database {
                             .map(crate::dto::PlannerLineDescription),
                         time_of_day_minutes: read_time(time)?,
                         is_collapsed: row.get::<_, i64>(7)? != 0,
+                        deadline_days: deadline_days
+                            .map(|value| {
+                                u16::try_from(value).map_err(|_| rusqlite::Error::InvalidQuery)
+                            })
+                            .transpose()?,
+                        deadline_date: read_date(row.get(9)?)?,
+                        repeat_days: row.get(10)?,
+                        source_task_id: row
+                            .get::<_, Option<String>>(11)?
+                            .map(crate::dto::TaskTemplateId),
                     },
                 })
             })
@@ -146,6 +168,11 @@ impl Database {
         request.date.as_str()?;
         checked_key(&request.sibling_key.0)?;
         let time = checked_time(request.time_of_day_minutes)?;
+        let deadline_date = request
+            .deadline_date
+            .as_ref()
+            .map(CivilDateInput::as_str)
+            .transpose()?;
         if let Some(parent) = &request.parent_id {
             checked_identifier(parent)?;
             let parent_line = load_line(&self.connection, parent)?
@@ -160,7 +187,7 @@ impl Database {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(|_| AppError::storage_write_failed())?;
-        transaction.execute("INSERT INTO planner_lines (id, date, parent_id, sibling_key, title, description, time_of_day_minutes, is_collapsed, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?8)", params![id.0, request.date.as_str()?, request.parent_id.as_ref().map(|value| &value.0), request.sibling_key.0, request.title.0, request.description.as_ref().map(|value| &value.0), time, timestamp]).map_err(|_| AppError::storage_write_failed())?;
+        transaction.execute("INSERT INTO planner_lines (id, date, parent_id, sibling_key, title, description, time_of_day_minutes, is_collapsed, deadline_days, deadline_date, repeat_days, source_task_id, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?9, ?10, ?11, ?12, ?12)", params![id.0, request.date.as_str()?, request.parent_id.as_ref().map(|value| &value.0), request.sibling_key.0, request.title.0, request.description.as_ref().map(|value| &value.0), time, request.deadline_days.map(i64::from), deadline_date, request.repeat_days, request.source_task_id.as_ref().map(|value| &value.0), timestamp]).map_err(|_| AppError::storage_write_failed())?;
         transaction
             .commit()
             .map_err(|_| AppError::storage_write_failed())?;
@@ -173,6 +200,10 @@ impl Database {
             description: request.description.clone(),
             time_of_day_minutes: request.time_of_day_minutes,
             is_collapsed: false,
+            deadline_days: request.deadline_days,
+            deadline_date: request.deadline_date.clone(),
+            repeat_days: request.repeat_days.clone(),
+            source_task_id: request.source_task_id.clone(),
         })
     }
 
@@ -182,12 +213,17 @@ impl Database {
     ) -> Result<(), AppError> {
         checked_identifier(&request.id)?;
         let time = checked_time(request.time_of_day_minutes)?;
+        let deadline_date = request
+            .deadline_date
+            .as_ref()
+            .map(CivilDateInput::as_str)
+            .transpose()?;
         let timestamp = super::now_ms()?;
         let transaction = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(|_| AppError::storage_write_failed())?;
-        let changed = transaction.execute("UPDATE planner_lines SET title = ?1, description = ?2, time_of_day_minutes = ?3, updated_at_ms = ?4 WHERE id = ?5", params![request.title.0, request.description.as_ref().map(|value| &value.0), time, timestamp, request.id.0]).map_err(|_| AppError::storage_write_failed())?;
+        let changed = transaction.execute("UPDATE planner_lines SET date = COALESCE(?1, date), title = ?2, description = ?3, time_of_day_minutes = ?4, deadline_days = ?5, deadline_date = ?6, repeat_days = ?7, source_task_id = ?8, updated_at_ms = ?9 WHERE id = ?10", params![request.date.as_ref().map(CivilDateInput::as_str).transpose()?, request.title.0, request.description.as_ref().map(|value| &value.0), time, request.deadline_days.map(i64::from), deadline_date, request.repeat_days, request.source_task_id.as_ref().map(|value| &value.0), timestamp, request.id.0]).map_err(|_| AppError::storage_write_failed())?;
         if changed != 1 {
             return Err(AppError::storage_not_found());
         }

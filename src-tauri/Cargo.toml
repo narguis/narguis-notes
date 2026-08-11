@@ -1,10 +1,14 @@
 [package]
 name = "notes-planner-desktop"
 version = "0.1.0"
-description = "Notes Planner desktop bootstrap"
+description = "Narguis Notes App desktop bootstrap"
 authors = ["Narguis"]
 edition = "2021"
 rust-version = "1.88"
+
+[[bin]]
+name = "notes-planner-desktop"
+path = "src/main.rs"
 
 [lib]
 name = "notes_planner_desktop"

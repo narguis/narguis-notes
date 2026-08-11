@@ -103,6 +103,10 @@ h3 {
   background: var(--paper);
   border-top: 2px solid var(--ink);
 }
+.tab-count {
+  color: var(--muted);
+  font-size: 11px;
+}
 .page-heading {
   display: flex;
   justify-content: space-between;
@@ -130,6 +134,11 @@ h3 {
   gap: 14px;
   margin-top: 18px;
 }
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .editor-form input,
 .editor-form textarea {
   min-height: auto;
@@ -142,6 +151,46 @@ h3 {
   min-height: 150px;
   line-height: 28px;
 }
+.task-editor-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.task-editor-line > input {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font-size: 20px;
+}
+.task-editor-line label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font:
+    12px system-ui,
+    sans-serif;
+}
+.task-editor-line label input {
+  min-width: 0;
+  width: 76px;
+}
+.task-editor-details {
+  margin: 12px 0;
+  color: var(--muted);
+  font:
+    13px system-ui,
+    sans-serif;
+}
+.task-editor-details summary {
+  cursor: pointer;
+}
+.task-editor-details textarea {
+  margin-top: 10px;
+}
 .editor-form label {
   display: flex;
   align-items: center;
@@ -150,6 +199,29 @@ h3 {
   font:
     13px system-ui,
     sans-serif;
+}
+.weekday-picker {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font:
+    13px system-ui,
+    sans-serif;
+}
+.weekday-picker > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.weekday-button {
+  min-width: 42px;
+  padding: 7px 8px;
+  font-size: 12px;
+}
+.weekday-button.selected {
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
 }
 .editor-form label input {
   width: auto;
@@ -170,10 +242,58 @@ h3 {
   background: transparent;
   text-align: left;
 }
+.note-card-wrap {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.card-delete {
+  justify-self: start;
+  border: 0;
+  padding: 3px 0;
+  color: var(--muted);
+  font:
+    12px system-ui,
+    sans-serif;
+}
+.card-actions {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 8px;
+  font:
+    12px system-ui,
+    sans-serif;
+}
+.card-actions summary {
+  cursor: pointer;
+  color: var(--muted);
+  list-style: none;
+}
+.card-actions summary::-webkit-details-marker {
+  display: none;
+}
+.card-actions > div {
+  position: absolute;
+  z-index: 4;
+  right: 0;
+  display: grid;
+  min-width: 130px;
+  padding: 6px;
+  border: 1px solid var(--edge);
+  background: var(--paper);
+  box-shadow: 0 5px 16px rgb(39 52 59 / 12%);
+}
+.card-actions button {
+  border: 0;
+  padding: 8px 10px;
+  text-align: left;
+}
 .note-grid .note-card {
   min-height: 130px;
   border: 1px solid var(--edge);
-  padding: 16px;
+  padding: 16px 42px 16px 16px;
   background: rgb(255 253 247 / 68%);
 }
 .note-card h4 {
@@ -198,6 +318,21 @@ h3 {
   font:
     14px system-ui,
     sans-serif;
+}
+.day-weekday {
+  display: block;
+  width: max-content;
+  margin-top: 4px;
+  padding-bottom: 2px;
+  border-bottom: 2px solid var(--margin);
+  color: var(--muted);
+  font:
+    12px system-ui,
+    sans-serif;
+}
+.header-weekday {
+  margin-top: 2px;
+  font-size: 11px;
 }
 .paper-panel {
   position: relative;
@@ -229,6 +364,68 @@ h3 {
   font:
     14px system-ui,
     sans-serif;
+}
+.planner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 8px;
+}
+.template-picker {
+  display: grid;
+  gap: 12px;
+  margin: -4px 0 16px;
+  padding: 12px;
+  border: 1px solid var(--edge);
+  background: rgb(236 233 225 / 45%);
+  font-family: system-ui, sans-serif;
+}
+.template-picker-backdrop {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(39 52 59 / 28%);
+}
+.template-picker-backdrop .template-picker {
+  width: min(100%, 520px);
+  max-height: min(80dvh, 600px);
+  overflow: auto;
+  margin: 0;
+  background: var(--paper);
+  box-shadow: 0 14px 38px rgb(39 52 59 / 22%);
+}
+.template-picker-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+.template-picker-heading button {
+  border: 0;
+  padding: 4px 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.template-picker-list {
+  display: grid;
+  gap: 6px;
+}
+.template-picker-list button {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  border: 1px solid var(--edge);
+  background: var(--paper);
+  text-align: left;
+}
+.template-picker-list time {
+  color: var(--muted);
+  font-size: 12px;
 }
 .page-number {
   color: var(--muted);
@@ -268,12 +465,20 @@ textarea::placeholder {
 .planner-line {
   position: relative;
   display: grid;
-  grid-template-columns: 28px 24px 88px minmax(0, 1fr) 56px 28px 28px;
+  grid-template-columns: 28px 24px 88px minmax(0, 1fr) 68px 28px 28px;
   align-items: center;
   gap: 8px;
   min-height: 42px;
   margin-left: calc(var(--depth) * 28px);
   border-bottom: 1px solid var(--rule);
+}
+.deadline-badge {
+  min-width: 0;
+  color: var(--muted);
+  font:
+    11px system-ui,
+    sans-serif;
+  white-space: nowrap;
 }
 .planner-line[draggable="true"] {
   cursor: grab;
@@ -319,6 +524,13 @@ textarea::placeholder {
     sans-serif;
   text-align: left;
 }
+.time-locked {
+  min-width: 70px;
+  color: var(--muted);
+  font:
+    13px system-ui,
+    sans-serif;
+}
 .line-time {
   min-width: 0;
   padding: 4px 6px;
@@ -342,6 +554,22 @@ textarea::placeholder {
   border: 0;
   background: transparent;
 }
+.line-title-display {
+  width: 100%;
+  overflow: hidden;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 18px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.line-title-display:hover {
+  background: transparent;
+  color: var(--muted);
+}
 .line-title {
   font-size: 18px;
 }
@@ -360,23 +588,13 @@ textarea::placeholder {
     sans-serif;
 }
 .blank-line .line-title {
-  grid-column: 1 / -1;
   min-height: 40px;
 }
-.planner-line.crossed .line-title {
+.planner-line.crossed .line-title,
+.planner-line.crossed .line-title-display {
   color: var(--muted);
   text-decoration: line-through;
   text-decoration-thickness: 2px;
-}
-.planner-line.crossed::after {
-  position: absolute;
-  z-index: 3;
-  top: 50%;
-  right: 0;
-  left: 0;
-  border-top: 2px solid currentColor;
-  content: "";
-  pointer-events: none;
 }
 .line-actions {
   position: relative;
@@ -443,6 +661,20 @@ textarea::placeholder {
   background: rgb(255 253 247 / 70%);
   line-height: 1.55;
 }
+.description-display {
+  width: 100%;
+  border: 0;
+  padding: 8px 10px;
+  background: rgb(236 233 225 / 55%);
+  text-align: left;
+}
+.locked-description {
+  cursor: default;
+}
+.empty-detail {
+  color: var(--muted);
+  font-style: italic;
+}
 .markdown-preview {
   min-height: 40px;
   padding: 8px 10px;
@@ -458,6 +690,58 @@ textarea::placeholder {
   margin: 20px 0 4px;
   color: var(--muted);
   font-style: italic;
+}
+.weekly-panel {
+  padding: 18px;
+}
+.weekly-panel textarea {
+  min-height: 520px;
+  border: 1px solid var(--edge);
+  padding: 14px;
+  background: rgb(255 253 247 / 70%);
+}
+.unfinished-list {
+  display: grid;
+  gap: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.unfinished-day-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.unfinished-day-heading h3 {
+  margin: 0;
+}
+.unfinished-line {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 68px 28px;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 0 0 4px;
+  border-bottom: 1px solid var(--rule);
+}
+.unfinished-title {
+  overflow: hidden;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.unfinished-title:hover {
+  background: transparent;
+  color: var(--muted);
+}
+.unfinished-line .card-actions {
+  top: 8px;
+  right: 0;
 }
 @media (max-width: 560px) {
   #app {
@@ -479,6 +763,13 @@ textarea::placeholder {
     display: block;
   }
   .planner-line {
-    grid-template-columns: 28px 20px 70px minmax(0, 1fr) 48px 24px 24px;
+    grid-template-columns: 28px 20px 70px minmax(0, 1fr) 58px 24px 24px;
+  }
+  .deadline-badge {
+    font-size: 10px;
+  }
+  .unfinished-line {
+    grid-template-columns: 24px minmax(0, 1fr) 58px 24px;
+    align-items: start;
   }
 }

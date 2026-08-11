@@ -23,6 +23,10 @@ export type PlannerLine = {
   description: string | null
   timeOfDayMinutes: number | null
   isCollapsed: boolean
+  deadlineDays: number | null
+  deadlineDate: CivilDate | null
+  repeatDays: number[]
+  sourceTaskId: string | null
 }
 export type Note = { id: string; title: string; body: string }
 export type TaskTemplate = {
@@ -30,6 +34,8 @@ export type TaskTemplate = {
   title: string
   body: string
   timeOfDayMinutes: number | null
+  deadlineDays: number | null
+  repeatDays: number[]
 }
 
 function civil(value: unknown): CivilDate {
@@ -46,6 +52,13 @@ function minute(value: unknown): number | null {
   if (!Number.isInteger(value) || (value as number) < 0 || (value as number) >= 1440)
     throw new PlannerIpcError("Invalid time")
   return value as number
+}
+function days(value: unknown): number[] {
+  if (typeof value !== "string" || value === "") return []
+  const result = value.split(",").map(Number)
+  if (result.some((day) => !Number.isInteger(day) || day < 0 || day > 6))
+    throw new PlannerIpcError("Invalid repeat days")
+  return result
 }
 function record(value: unknown): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value))
@@ -95,6 +108,11 @@ export function parseTaskTemplates(value: unknown): TaskTemplate[] {
       title: text(item["title"], "template title"),
       body: text(item["body"], "template body"),
       timeOfDayMinutes: minute(item["timeOfDayMinutes"]),
+      deadlineDays:
+        item["deadlineDays"] === null || item["deadlineDays"] === undefined
+          ? null
+          : Number(item["deadlineDays"]),
+      repeatDays: days(item["repeatDays"]),
     }
   })
 }
@@ -118,7 +136,20 @@ export function parsePlannerLines(value: unknown, expectedDate: CivilDate): Plan
       title: text(item["title"], "line title"),
       description: descriptionValue === null ? null : text(descriptionValue, "description"),
       timeOfDayMinutes: minute(item["timeOfDayMinutes"]),
+      deadlineDays:
+        item["deadlineDays"] === null || item["deadlineDays"] === undefined
+          ? null
+          : Number(item["deadlineDays"]),
+      deadlineDate:
+        item["deadlineDate"] === null || item["deadlineDate"] === undefined
+          ? null
+          : civil(item["deadlineDate"]),
+      repeatDays: days(item["repeatDays"]),
       isCollapsed: item["isCollapsed"] === true,
+      sourceTaskId:
+        item["sourceTaskId"] === null || item["sourceTaskId"] === undefined
+          ? null
+          : text(item["sourceTaskId"], "source task id"),
     }
   })
   for (const line of lines) {

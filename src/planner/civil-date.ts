@@ -17,21 +17,40 @@ export function parseCivilDate(value: unknown): CivilDate | null {
   return maximum !== null && day >= 1 && day <= maximum ? { value } : null
 }
 
-export function shiftCivilDate(date: CivilDate, offset: -1 | 1): CivilDate {
+export function shiftCivilDate(date: CivilDate, offset: number): CivilDate {
   const [yearText, monthText, dayText] = date.value.split("-")
   const year = Number(yearText)
   const month = Number(monthText)
   const day = Number(dayText)
   const maximum = daysInMonth(year, month)
   if (maximum === null) throw new Error("Cannot shift an invalid civil date")
-  if (offset === 1 && day < maximum) return makeDate(year, month, day + 1)
-  if (offset === -1 && day > 1) return makeDate(year, month, day - 1)
-  if (offset === -1 && month === 1) return makeDate(year - 1, 12, 31)
-  if (offset === 1 && month === 12) return makeDate(year + 1, 1, 1)
-  const nextMonth = month + offset
-  const nextMaximum = daysInMonth(year, nextMonth)
-  if (nextMaximum === null) throw new Error("Cannot shift an invalid civil date")
-  return makeDate(year, nextMonth, offset === 1 ? 1 : nextMaximum)
+  let result = { year, month, day }
+  const step = offset < 0 ? -1 : 1
+  for (let index = 0; index < Math.abs(offset); index += 1) {
+    if (step === 1 && result.day < (daysInMonth(result.year, result.month) ?? 0)) result.day += 1
+    else if (step === -1 && result.day > 1) result.day -= 1
+    else if (step === -1 && result.month === 1) {
+      result = { year: result.year - 1, month: 12, day: 31 }
+    } else if (step === 1 && result.month === 12) {
+      result = { year: result.year + 1, month: 1, day: 1 }
+    } else {
+      result.month += step
+      result.day = step === 1 ? 1 : (daysInMonth(result.year, result.month) ?? 1)
+    }
+  }
+  return makeDate(result.year, result.month, result.day)
+}
+
+export function civilWeekday(date: CivilDate): number {
+  const parts = date.value.split("-").map(Number)
+  const year = parts[0] ?? 0
+  const month = parts[1] ?? 0
+  const day = parts[2] ?? 0
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay()
+}
+
+export function startOfWeek(date: CivilDate): CivilDate {
+  return shiftCivilDate(date, -civilWeekday(date))
 }
 
 function makeDate(year: number, month: number, day: number): CivilDate {

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Allowlisted Notes Planner application commands for the main window.",
+  "description": "Allowlisted Narguis Notes App commands for the main window.",
   "windows": ["main"],
   "permissions": [
     "core:event:allow-listen",

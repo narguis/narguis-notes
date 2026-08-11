@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { AUTOSAVE_DELAY_MS } from "../src/planner/autosave"
-import { parseCivilDate, shiftCivilDate } from "../src/planner/civil-date"
+import { parseCivilDate, shiftCivilDate, startOfWeek } from "../src/planner/civil-date"
 import {
   PlannerIpcError,
   parseDailyPage,
@@ -11,6 +11,10 @@ import {
 import { flattenVisiblePlannerLines } from "../src/planner/outline"
 
 describe("civil-date navigation", () => {
+  it("anchors weekly navigation to Sunday without leaking dates", () => {
+    expect(startOfWeek({ value: "2026-08-05" })).toEqual({ value: "2026-08-02" })
+    expect(shiftCivilDate({ value: "2026-08-02" }, 6)).toEqual({ value: "2026-08-08" })
+  })
   it("rejects non-civil values without UTC conversion", () => {
     // Given: values that contain a time zone or an impossible calendar day
     // When: each value crosses the civil-date parser
@@ -176,10 +180,24 @@ describe("normal note and task IPC responses", () => {
     // Then: its title, body, and optional local minute remain independent fields
     expect(
       parseTaskTemplates([
-        { id: "template-1", title: "Review", body: "Confirm owners", timeOfDayMinutes: 571 },
+        {
+          id: "template-1",
+          title: "Review",
+          body: "Confirm owners",
+          timeOfDayMinutes: 571,
+          deadlineDays: 3,
+          repeatDays: "1,3,5",
+        },
       ]),
     ).toEqual([
-      { id: "template-1", title: "Review", body: "Confirm owners", timeOfDayMinutes: 571 },
+      {
+        id: "template-1",
+        title: "Review",
+        body: "Confirm owners",
+        timeOfDayMinutes: 571,
+        deadlineDays: 3,
+        repeatDays: [1, 3, 5],
+      },
     ])
     expect(() =>
       parseTaskTemplates([
@@ -204,6 +222,10 @@ describe("visible planner tree", () => {
         description: null,
         timeOfDayMinutes: null,
         isCollapsed: true,
+        deadlineDays: null,
+        deadlineDate: null,
+        repeatDays: [],
+        sourceTaskId: null,
       },
       {
         id: "child",
@@ -214,6 +236,10 @@ describe("visible planner tree", () => {
         description: null,
         timeOfDayMinutes: null,
         isCollapsed: false,
+        deadlineDays: null,
+        deadlineDate: null,
+        repeatDays: [],
+        sourceTaskId: null,
       },
       {
         id: "grandchild",
@@ -224,6 +250,10 @@ describe("visible planner tree", () => {
         description: null,
         timeOfDayMinutes: null,
         isCollapsed: false,
+        deadlineDays: null,
+        deadlineDate: null,
+        repeatDays: [],
+        sourceTaskId: null,
       },
     ])
 
