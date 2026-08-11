@@ -32,11 +32,22 @@ let templates: TaskTemplate[] = []
 let crossedLines = new Set<string>()
 const expandedLines = new Set<string>()
 const editingLineFields = new Set<string>()
-let activeView: "planner" | "notes" | "tasks" | "unfinished" = "planner"
+let activeView: "planner" | "notes" | "tasks" | "unfinished" | "timers" = "planner"
 let plannerMode: "daily" | "weekly" = "daily"
 let selectedWeek = startOfWeek(today)
 let weeklyContent = ""
 let unfinishedLines: PlannerLine[] = []
+const firedAlarmKeys = new Set<string>()
+type TimerEntry = {
+  id: string
+  name: string
+  durationSeconds: number
+  startedAtMs: number
+  endsAtMs: number
+}
+let timers: TimerEntry[] = []
+let timerEditor = false
+let timerNowMs = Date.now()
 let draggedLineId: string | undefined
 let noteEditor: Note | "new" | null = null
 let templateEditor: TaskTemplate | "new" | null = null
@@ -65,9 +76,9 @@ function render(): void {
         </nav>
       </header>
        <nav class="workspace-tabs" aria-label="Workspace">
-         <button class="${activeView === "planner" ? "selected" : ""}" data-view="planner" type="button" aria-current="${activeView === "planner" ? "page" : "false"}">Planner</button><button class="${activeView === "unfinished" ? "selected" : ""}" data-view="unfinished" type="button" aria-current="${activeView === "unfinished" ? "page" : "false"}">Unfinished <span class="tab-count">${unfinishedLines.length || ""}</span></button><button class="${activeView === "notes" ? "selected" : ""}" data-view="notes" type="button" aria-current="${activeView === "notes" ? "page" : "false"}">Notes</button><button class="${activeView === "tasks" ? "selected" : ""}" data-view="tasks" type="button" aria-current="${activeView === "tasks" ? "page" : "false"}">Tasks</button>
+          <button class="${activeView === "planner" ? "selected" : ""}" data-view="planner" type="button" aria-current="${activeView === "planner" ? "page" : "false"}">Planner</button><button class="${activeView === "unfinished" ? "selected" : ""}" data-view="unfinished" type="button" aria-current="${activeView === "unfinished" ? "page" : "false"}">Unfinished <span class="tab-count">${unfinishedLines.length || ""}</span></button><button class="${activeView === "notes" ? "selected" : ""}" data-view="notes" type="button" aria-current="${activeView === "notes" ? "page" : "false"}">Notes</button><button class="${activeView === "tasks" ? "selected" : ""}" data-view="tasks" type="button" aria-current="${activeView === "tasks" ? "page" : "false"}">Tasks</button><button class="${activeView === "timers" ? "selected" : ""}" data-view="timers" type="button" aria-current="${activeView === "timers" ? "page" : "false"}">Timers</button>
        </nav>
-       <main>${activeView === "planner" ? renderPlanner() : activeView === "notes" ? renderNotes() : activeView === "tasks" ? renderTasks() : renderUnfinished()}</main>
+        <main>${activeView === "planner" ? renderPlanner() : activeView === "notes" ? renderNotes() : activeView === "tasks" ? renderTasks() : activeView === "unfinished" ? renderUnfinished() : renderTimers()}</main>
     </div>`
   bindEvents()
 }
@@ -113,6 +124,12 @@ function renderTasks(): string {
 function renderTaskSection(title: string, tasks: TaskTemplate[]): string {
   if (tasks.length === 0) return ""
   return `<section class="paper-panel workspace-panel task-section"><div class="section-heading"><h3>${escapeHtml(title)}</h3><span class="muted">${tasks.length}</span></div><div class="note-grid">${tasks.map((task) => `<div class="note-card-wrap"><button class="note-card" type="button" data-template-card="${escapeHtml(task.id)}"><h4>${escapeHtml(task.title)}</h4></button><details class="card-actions"><summary aria-label="Task actions">...</summary><div><button type="button" data-template-delete="${escapeHtml(task.id)}">Delete</button><button type="button" data-template-today="${escapeHtml(task.id)}">Add to today</button></div></details></div>`).join("")}</div></section>`
+}
+
+function renderTimers(): string {
+  if (timerEditor)
+    return `<div class="workspace-heading"><div><p class="eyebrow">Countdown timer</p><h2>New timer</h2></div><button type="button" data-cancel-timer>Back to timers</button></div><section class="paper-panel workspace-panel timer-panel"><form id="timer-form" class="editor-form"><input name="name" required maxlength="200" placeholder="Timer name" aria-label="Timer name" /><div class="timer-duration-fields"><label>Hours <input name="hours" required type="number" min="0" max="24" value="0" /></label><label>Minutes <input name="minutes" required type="number" min="0" max="59" value="25" /></label></div><button type="submit">Start timer</button></form></section>`
+  return `<div class="workspace-heading"><div><p class="eyebrow">Countdowns</p><h2>Timers</h2></div><button type="button" data-new-timer>New timer</button></div><section class="paper-panel workspace-panel timer-panel">${timers.length === 0 ? '<p class="empty-line">No timers running.</p>' : `<ul class="timer-list">${timers.map((timer) => `<li><div><strong>${escapeHtml(timer.name)}</strong><span class="muted">Ends at ${formatClock(new Date(timer.endsAtMs))}</span></div><strong class="timer-remaining">${formatTimerRemaining(timer)}</strong><button type="button" data-delete-timer="${escapeHtml(timer.id)}">Delete</button></li>`).join("")}</ul>`}</section>`
 }
 
 function renderUnfinished(): string {
@@ -193,6 +210,79 @@ function formatMinutes(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
 }
 
+function formatClock(date: Date): string {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
+}
+
+function formatTimerRemaining(timer: TimerEntry): string {
+  const seconds = Math.max(0, Math.ceil((timer.endsAtMs - timerNowMs) / 1000))
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`
+}
+
+function persistTimers(): void {
+  writeLocal("timers", timers)
+}
+
+function playAlertSound(): void {
+  try {
+    const context = new AudioContext()
+    for (const offset of [0, 0.38]) {
+      const oscillator = context.createOscillator()
+      const gain = context.createGain()
+      oscillator.frequency.value = offset === 0 ? 660 : 880
+      gain.gain.setValueAtTime(0.2, context.currentTime + offset)
+      gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + offset + 0.32)
+      oscillator.connect(gain).connect(context.destination)
+      oscillator.start(context.currentTime + offset)
+      oscillator.stop(context.currentTime + offset + 0.32)
+    }
+  } catch {
+    // Audio may be unavailable in a restricted WebView.
+  }
+}
+
+function showAlert(title: string, message: string): void {
+  playAlertSound()
+  if ("Notification" in window && Notification.permission === "granted")
+    new Notification(title, { body: message })
+  const popup = document.createElement("div")
+  popup.className = "alarm-popup"
+  popup.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(message)}</span><button type="button">Dismiss</button>`
+  popup.querySelector("button")?.addEventListener("click", () => popup.remove())
+  document.body.append(popup)
+  window.setTimeout(() => popup.remove(), 12000)
+}
+
+function checkTaskAlarms(): void {
+  const now = new Date()
+  if (selectedDate.value === today.value) {
+    const minute = now.getHours() * 60 + now.getMinutes()
+    for (const line of lines) {
+      if (!line.alarmEnabled || line.timeOfDayMinutes === null || line.title.trim() === "") continue
+      const stage =
+        minute === line.timeOfDayMinutes - 15
+          ? "soon"
+          : minute === line.timeOfDayMinutes
+            ? "now"
+            : ""
+      if (stage === "") continue
+      const key = `${lineIdentity(line)}:${today.value}:${stage}`
+      if (firedAlarmKeys.has(key)) continue
+      firedAlarmKeys.add(key)
+      showAlert(stage === "soon" ? "Task in 15 minutes" : "Task time", line.title)
+    }
+  }
+  const finished = timers.filter((timer) => timer.endsAtMs <= Date.now())
+  if (finished.length > 0) {
+    for (const timer of finished) showAlert("Timer finished", timer.name)
+    timers = timers.filter((timer) => timer.endsAtMs > Date.now())
+    persistTimers()
+    if (activeView === "timers" && !timerEditor) render()
+  }
+}
+
 function deadlineText(line: PlannerLine, fromDate: CivilDate = today): string {
   if (line.deadlineDate == null) return ""
   let remaining = 0
@@ -241,6 +331,7 @@ function scheduledLines(date: CivilDate, existing: PlannerLine[] = []): PlannerL
         template.deadlineDays == null ? null : shiftCivilDate(date, template.deadlineDays),
       repeatDays: template.repeatDays ?? [],
       sourceTaskId: template.id,
+      alarmEnabled: false,
     }))
 }
 
@@ -258,6 +349,10 @@ function renderLine(line: PlannerLine): string {
     : editingTime
       ? `<input class="line-time" type="text" inputmode="numeric" list="planner-time-options" maxlength="5" pattern="^([01][0-9]|2[0-3]):[0-5][0-9]$" value="${time}" placeholder="HH:MM" aria-label="Time in 24-hour HH:MM format" data-line-field="time" />`
       : `<button class="time-toggle" type="button" data-line-action="toggle-time" aria-label="${time ? `Change time, ${time}` : "Set time"}">${time || "◷"}</button>`
+  const alarmControl =
+    time !== "" && !crossed
+      ? `<button class="alarm-toggle ${line.alarmEnabled ? "enabled" : ""}" type="button" data-line-action="toggle-alarm" aria-label="${line.alarmEnabled ? "Turn alarm off" : "Turn alarm on"}" aria-pressed="${line.alarmEnabled}">🔔</button>`
+      : `<span class="alarm-slot" aria-hidden="true"></span>`
   const titleControl = editingTitle
     ? `<input class="line-title" value="${escapeHtml(line.title)}" aria-label="Plan item" data-line-field="title" />`
     : crossed
@@ -268,7 +363,7 @@ function renderLine(line: PlannerLine): string {
     : crossed
       ? `<div class="markdown-preview description-display locked-description">${line.description ? renderMarkdown(line.description) : ""}</div>`
       : `<button class="markdown-preview description-display" type="button" data-line-action="edit-description" aria-label="Edit details for ${escapeHtml(line.title || "blank line")}">${line.description ? renderMarkdown(line.description) : '<span class="empty-detail">Add details...</span>'}</button>`
-  return `<li class="planner-line ${line.title === "" ? "blank-line " : ""}${crossed ? "crossed" : ""}" style="--depth:${depth}" data-line-id="${escapeHtml(line.id)}"><button class="collapse" type="button" data-line-action="toggle-description" aria-label="${expanded ? "Hide details" : "Show details"}">${expanded ? "−" : "+"}</button><span class="drag-handle" draggable="true" title="Drag to reorder" aria-hidden="true">⋮⋮</span>${timeControl}${titleControl}<span class="deadline-badge">${deadline}</span><button class="cross-line" type="button" aria-label="${crossed ? "Uncross" : "Cross off"} ${escapeHtml(line.title || "blank line")}">${crossed ? "✓" : "□"}</button><details class="line-actions"><summary aria-label="More actions">...</summary><div class="line-menu"><button type="button" data-line-action="next-day">Move to next day</button><button type="button" data-line-action="save-template">Save as task</button><button type="button" data-line-action="delete-line">Delete line</button></div></details>${expanded ? `<div class="line-detail">${detailControl}</div>` : ""}</li>`
+  return `<li class="planner-line ${line.title === "" ? "blank-line " : ""}${crossed ? "crossed" : ""}" style="--depth:${depth}" data-line-id="${escapeHtml(line.id)}"><button class="collapse" type="button" data-line-action="toggle-description" aria-label="${expanded ? "Hide details" : "Show details"}">${expanded ? "−" : "+"}</button><span class="drag-handle" draggable="true" title="Drag to reorder" aria-hidden="true">⋮⋮</span>${timeControl}${alarmControl}${titleControl}<span class="deadline-badge">${deadline}</span><button class="cross-line" type="button" aria-label="${crossed ? "Uncross" : "Cross off"} ${escapeHtml(line.title || "blank line")}">${crossed ? "✓" : "□"}</button><details class="line-actions"><summary aria-label="More actions">...</summary><div class="line-menu"><button type="button" data-line-action="next-day">Move to next day</button><button type="button" data-line-action="save-template">Save as task</button><button type="button" data-line-action="delete-line">Delete line</button></div></details>${expanded ? `<div class="line-detail">${detailControl}</div>` : ""}</li>`
 }
 
 function renderTemplatePicker(): string {
@@ -345,6 +440,7 @@ function draftLine(index: number, date: CivilDate = selectedDate): PlannerLine {
     deadlineDate: null,
     repeatDays: [],
     sourceTaskId: null,
+    alarmEnabled: false,
   }
 }
 function fillPage(existing: PlannerLine[], date: CivilDate = selectedDate): PlannerLine[] {
@@ -423,6 +519,7 @@ async function moveLineToNextDay(line: PlannerLine): Promise<void> {
           deadlineDate: line.deadlineDate?.value ?? null,
           repeatDays: repeatDaysValue(line.repeatDays),
           sourceTaskId: line.sourceTaskId,
+          alarmEnabled: line.alarmEnabled,
         },
       })
     } catch {
@@ -503,6 +600,7 @@ async function insertTemplateIntoLine(templateId: string, line: PlannerLine): Pr
         template.deadlineDays == null ? null : shiftCivilDate(selectedDate, template.deadlineDays),
       repeatDays: [],
       sourceTaskId: template.id,
+      alarmEnabled: false,
     },
   ]
   writeLocal(`lines:${selectedDate.value}`, lines)
@@ -544,6 +642,7 @@ async function importTaskIntoCurrentDay(templateId: string): Promise<void> {
       task.deadlineDays == null ? null : shiftCivilDate(selectedDate, task.deadlineDays),
     repeatDays: [],
     sourceTaskId: task.id,
+    alarmEnabled: false,
   }
   lines = [...lines, inserted]
   writeLocal(`lines:${selectedDate.value}`, lines)
@@ -666,7 +765,13 @@ function bindEvents(): void {
   app.querySelectorAll<HTMLButtonElement>("[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
       const view = button.dataset["view"]
-      if (view !== "planner" && view !== "notes" && view !== "tasks" && view !== "unfinished")
+      if (
+        view !== "planner" &&
+        view !== "notes" &&
+        view !== "tasks" &&
+        view !== "unfinished" &&
+        view !== "timers"
+      )
         return
       activeView = view
       void loadWorkspace()
@@ -679,6 +784,41 @@ function bindEvents(): void {
   app.querySelector<HTMLFormElement>("#task-form")?.addEventListener("submit", (event) => {
     event.preventDefault()
     void createTemplate(new FormData(event.currentTarget as HTMLFormElement))
+  })
+  app.querySelector<HTMLFormElement>("#timer-form")?.addEventListener("submit", (event) => {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget as HTMLFormElement)
+    const durationSeconds = Number(form.get("hours")) * 3600 + Number(form.get("minutes")) * 60
+    if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) return
+    const startedAtMs = Date.now()
+    timers = [
+      ...timers,
+      {
+        id: `timer-${startedAtMs}`,
+        name: String(form.get("name") ?? "Timer"),
+        durationSeconds,
+        startedAtMs,
+        endsAtMs: startedAtMs + durationSeconds * 1000,
+      },
+    ]
+    persistTimers()
+    timerEditor = false
+    render()
+  })
+  app.querySelector<HTMLButtonElement>("[data-new-timer]")?.addEventListener("click", () => {
+    timerEditor = true
+    render()
+  })
+  app.querySelector<HTMLButtonElement>("[data-cancel-timer]")?.addEventListener("click", () => {
+    timerEditor = false
+    render()
+  })
+  app.querySelectorAll<HTMLButtonElement>("[data-delete-timer]").forEach((button) => {
+    button.addEventListener("click", () => {
+      timers = timers.filter((timer) => timer.id !== button.dataset["deleteTimer"])
+      persistTimers()
+      render()
+    })
   })
   app
     .querySelector<HTMLButtonElement>("[data-delete-editor-note]")
@@ -891,6 +1031,12 @@ function bindEvents(): void {
             `[data-line-id="${CSS.escape(id as string)}"] [data-line-field="time"]`,
           )
           ?.focus()
+      } else if (action === "toggle-alarm") {
+        line.alarmEnabled = !line.alarmEnabled
+        if (line.alarmEnabled && "Notification" in window && Notification.permission === "default")
+          void Notification.requestPermission()
+        void persistLine(line)
+        render()
       } else if (action === "next-day") {
         void moveLineToNextDay(line)
       } else if (action === "save-template") {
@@ -992,6 +1138,7 @@ async function loadPage(): Promise<void> {
               deadlineDate: line.deadlineDate?.value ?? null,
               repeatDays: repeatDaysValue(line.repeatDays),
               sourceTaskId: line.sourceTaskId,
+              alarmEnabled: line.alarmEnabled,
             },
           })
         else
@@ -1006,6 +1153,7 @@ async function loadPage(): Promise<void> {
               deadlineDate: line.deadlineDate?.value ?? null,
               repeatDays: repeatDaysValue(line.repeatDays),
               sourceTaskId: line.sourceTaskId,
+              alarmEnabled: line.alarmEnabled,
             },
           })
         clearDirtyLine(line.id)
@@ -1041,6 +1189,7 @@ async function persistLine(line: PlannerLine): Promise<void> {
           deadlineDate: line.deadlineDate?.value ?? null,
           repeatDays: repeatDaysValue(line.repeatDays),
           sourceTaskId: line.sourceTaskId,
+          alarmEnabled: line.alarmEnabled,
         },
       })
       const parsed = parsePlannerLines([created], line.date)[0]
@@ -1058,6 +1207,7 @@ async function persistLine(line: PlannerLine): Promise<void> {
           deadlineDate: line.deadlineDate?.value ?? null,
           repeatDays: repeatDaysValue(line.repeatDays),
           sourceTaskId: line.sourceTaskId,
+          alarmEnabled: line.alarmEnabled,
         },
       })
     clearDirtyLine(line.id)
@@ -1142,6 +1292,7 @@ async function copyBacklogLine(line: PlannerLine, date: CivilDate): Promise<void
           deadlineDate: moved.deadlineDate?.value ?? null,
           repeatDays: repeatDaysValue(moved.repeatDays),
           sourceTaskId: moved.sourceTaskId,
+          alarmEnabled: moved.alarmEnabled,
         },
       })
     } catch {
@@ -1164,6 +1315,11 @@ async function loadWorkspace(): Promise<void> {
   }
   if (activeView === "unfinished") {
     await loadBacklog()
+    return
+  }
+  if (activeView === "timers") {
+    timers = readLocal<TimerEntry[]>("timers", [])
+    render()
     return
   }
   if (isDesktop()) {
@@ -1323,3 +1479,9 @@ document.addEventListener("click", (event) => {
 render()
 void loadPage()
 void loadBacklog()
+timers = readLocal<TimerEntry[]>("timers", [])
+window.setInterval(() => {
+  timerNowMs = Date.now()
+  checkTaskAlarms()
+  if (activeView === "timers" && !timerEditor) render()
+}, 1000)

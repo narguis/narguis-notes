@@ -59,7 +59,7 @@ fn load_line(
 ) -> Result<Option<StoredLine>, AppError> {
     connection
         .query_row(
-            "SELECT id, date, parent_id, sibling_key, title, description, time_of_day_minutes, is_collapsed, deadline_days, deadline_date, repeat_days, source_task_id FROM planner_lines WHERE id = ?1",
+            "SELECT id, date, parent_id, sibling_key, title, description, time_of_day_minutes, is_collapsed, deadline_days, deadline_date, repeat_days, source_task_id, alarm_enabled FROM planner_lines WHERE id = ?1",
             params![id.0],
             |row| {
                 let time: Option<i64> = row.get(6)?;
@@ -77,6 +77,7 @@ fn load_line(
                     deadline_date: read_date(row.get(9)?)?,
                     repeat_days: row.get(10)?,
                     source_task_id: row.get::<_, Option<String>>(11)?.map(crate::dto::TaskTemplateId),
+                    alarm_enabled: row.get::<_, i64>(12)? != 0,
                 }})
             },
         )
@@ -91,7 +92,7 @@ impl Database {
     ) -> Result<Vec<PlannerLineDto>, AppError> {
         let date = date.as_str()?;
         let mut statement = self.connection.prepare(
-            "SELECT id, date, parent_id, sibling_key, title, description, time_of_day_minutes, is_collapsed, deadline_days, deadline_date, repeat_days, source_task_id FROM planner_lines WHERE date = ?1 ORDER BY sibling_key COLLATE BINARY ASC, id ASC",
+            "SELECT id, date, parent_id, sibling_key, title, description, time_of_day_minutes, is_collapsed, deadline_days, deadline_date, repeat_days, source_task_id, alarm_enabled FROM planner_lines WHERE date = ?1 ORDER BY sibling_key COLLATE BINARY ASC, id ASC",
         ).map_err(|_| AppError::storage_read_failed())?;
         let rows = statement
             .query_map(params![date], |row| {
@@ -120,6 +121,7 @@ impl Database {
                         source_task_id: row
                             .get::<_, Option<String>>(11)?
                             .map(crate::dto::TaskTemplateId),
+                        alarm_enabled: row.get::<_, i64>(12)? != 0,
                     },
                 })
             })
@@ -187,7 +189,7 @@ impl Database {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(|_| AppError::storage_write_failed())?;
-        transaction.execute("INSERT INTO planner_lines (id, date, parent_id, sibling_key, title, description, time_of_day_minutes, is_collapsed, deadline_days, deadline_date, repeat_days, source_task_id, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?9, ?10, ?11, ?12, ?12)", params![id.0, request.date.as_str()?, request.parent_id.as_ref().map(|value| &value.0), request.sibling_key.0, request.title.0, request.description.as_ref().map(|value| &value.0), time, request.deadline_days.map(i64::from), deadline_date, request.repeat_days, request.source_task_id.as_ref().map(|value| &value.0), timestamp]).map_err(|_| AppError::storage_write_failed())?;
+        transaction.execute("INSERT INTO planner_lines (id, date, parent_id, sibling_key, title, description, time_of_day_minutes, is_collapsed, deadline_days, deadline_date, repeat_days, source_task_id, alarm_enabled, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?9, ?10, ?11, ?12, ?13, ?13)", params![id.0, request.date.as_str()?, request.parent_id.as_ref().map(|value| &value.0), request.sibling_key.0, request.title.0, request.description.as_ref().map(|value| &value.0), time, request.deadline_days.map(i64::from), deadline_date, request.repeat_days, request.source_task_id.as_ref().map(|value| &value.0), request.alarm_enabled as i64, timestamp]).map_err(|_| AppError::storage_write_failed())?;
         transaction
             .commit()
             .map_err(|_| AppError::storage_write_failed())?;
@@ -204,6 +206,7 @@ impl Database {
             deadline_date: request.deadline_date.clone(),
             repeat_days: request.repeat_days.clone(),
             source_task_id: request.source_task_id.clone(),
+            alarm_enabled: request.alarm_enabled,
         })
     }
 
@@ -223,7 +226,7 @@ impl Database {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(|_| AppError::storage_write_failed())?;
-        let changed = transaction.execute("UPDATE planner_lines SET date = COALESCE(?1, date), title = ?2, description = ?3, time_of_day_minutes = ?4, deadline_days = ?5, deadline_date = ?6, repeat_days = ?7, source_task_id = ?8, updated_at_ms = ?9 WHERE id = ?10", params![request.date.as_ref().map(CivilDateInput::as_str).transpose()?, request.title.0, request.description.as_ref().map(|value| &value.0), time, request.deadline_days.map(i64::from), deadline_date, request.repeat_days, request.source_task_id.as_ref().map(|value| &value.0), timestamp, request.id.0]).map_err(|_| AppError::storage_write_failed())?;
+        let changed = transaction.execute("UPDATE planner_lines SET date = COALESCE(?1, date), title = ?2, description = ?3, time_of_day_minutes = ?4, deadline_days = ?5, deadline_date = ?6, repeat_days = ?7, source_task_id = ?8, alarm_enabled = ?9, updated_at_ms = ?10 WHERE id = ?11", params![request.date.as_ref().map(CivilDateInput::as_str).transpose()?, request.title.0, request.description.as_ref().map(|value| &value.0), time, request.deadline_days.map(i64::from), deadline_date, request.repeat_days, request.source_task_id.as_ref().map(|value| &value.0), request.alarm_enabled as i64, timestamp, request.id.0]).map_err(|_| AppError::storage_write_failed())?;
         if changed != 1 {
             return Err(AppError::storage_not_found());
         }

@@ -15,8 +15,9 @@ const MIGRATIONS: &[(u32, &str)] = &[
     ),
     (5, include_str!("../../migrations/0005_task_scheduling.sql")),
     (6, include_str!("../../migrations/0006_task_lineage.sql")),
+    (7, include_str!("../../migrations/0007_task_alarms.sql")),
 ];
-pub const DATABASE_VERSION: u32 = 6;
+pub const DATABASE_VERSION: u32 = 7;
 
 pub(super) fn apply(
     connection: &mut Connection,

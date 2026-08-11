@@ -79,7 +79,7 @@ fn migrates_v2_additively_without_changing_legacy_prose_or_notes() {
     // Then: the new schema exists while the prior records retain their original bytes
     assert_eq!(
         migrated_database.schema_version().expect("version reads"),
-        6
+        7
     );
     assert_eq!(
         migrated_database
@@ -174,7 +174,7 @@ fn migrates_v3_line_text_to_exact_title_with_null_description() {
         .expect("lines should list after migration");
     assert_eq!(
         migrated_database.schema_version().expect("version reads"),
-        6
+        7
     );
     assert_eq!(lines[0].title.0.as_bytes(), legacy_text.as_bytes());
     assert_eq!(lines[0].description, None);

@@ -191,6 +191,26 @@ h3 {
 .task-editor-details textarea {
   margin-top: 10px;
 }
+.timer-panel {
+  background-image: none;
+}
+.timer-duration-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.timer-duration-fields label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font:
+    13px system-ui,
+    sans-serif;
+}
+.timer-duration-fields input {
+  width: 78px;
+}
 .editor-form label {
   display: flex;
   align-items: center;
@@ -465,7 +485,7 @@ textarea::placeholder {
 .planner-line {
   position: relative;
   display: grid;
-  grid-template-columns: 28px 24px 88px minmax(0, 1fr) 68px 28px 28px;
+  grid-template-columns: 28px 24px 88px 28px minmax(0, 1fr) 68px 28px 28px;
   align-items: center;
   gap: 8px;
   min-height: 42px;
@@ -530,6 +550,18 @@ textarea::placeholder {
   font:
     13px system-ui,
     sans-serif;
+}
+.alarm-toggle {
+  border: 0;
+  padding: 4px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 14px;
+  opacity: 0.45;
+}
+.alarm-toggle.enabled {
+  color: #a85d28;
+  opacity: 1;
 }
 .line-time {
   min-width: 0;
@@ -598,7 +630,7 @@ textarea::placeholder {
 }
 .line-actions {
   position: relative;
-  grid-column: 7;
+  grid-column: 8;
   grid-row: 1;
   justify-self: end;
   margin: 0;
@@ -743,6 +775,56 @@ textarea::placeholder {
   top: 8px;
   right: 0;
 }
+.timer-list {
+  display: grid;
+  gap: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.timer-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.timer-list li > div {
+  display: grid;
+  gap: 4px;
+}
+.timer-remaining {
+  font-variant-numeric: tabular-nums;
+}
+.timer-list button {
+  border: 0;
+  padding: 6px 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.alarm-popup {
+  position: fixed;
+  z-index: 30;
+  top: 24px;
+  right: 24px;
+  display: grid;
+  gap: 6px;
+  width: min(320px, calc(100vw - 48px));
+  padding: 16px;
+  border: 1px solid var(--edge);
+  background: var(--paper);
+  box-shadow: 0 12px 30px rgb(39 52 59 / 22%);
+  font-family: system-ui, sans-serif;
+}
+.alarm-popup span {
+  color: var(--muted);
+}
+.alarm-popup button {
+  justify-self: start;
+  padding: 5px 8px;
+  font-size: 12px;
+}
 @media (max-width: 560px) {
   #app {
     padding: 20px 12px 40px;
@@ -763,7 +845,7 @@ textarea::placeholder {
     display: block;
   }
   .planner-line {
-    grid-template-columns: 28px 20px 70px minmax(0, 1fr) 58px 24px 24px;
+    grid-template-columns: 28px 20px 70px 24px minmax(0, 1fr) 58px 24px 24px;
   }
   .deadline-badge {
     font-size: 10px;
@@ -771,5 +853,11 @@ textarea::placeholder {
   .unfinished-line {
     grid-template-columns: 24px minmax(0, 1fr) 58px 24px;
     align-items: start;
+  }
+  .timer-list li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .timer-list li > button {
+    grid-column: 2;
   }
 }

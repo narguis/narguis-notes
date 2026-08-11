@@ -1,0 +1,1 @@
+ALTER TABLE planner_lines ADD COLUMN alarm_enabled INTEGER NOT NULL DEFAULT 0;

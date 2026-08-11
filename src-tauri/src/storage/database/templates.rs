@@ -159,7 +159,7 @@ impl Database {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(|_| AppError::storage_write_failed())?;
-        transaction.execute("INSERT INTO planner_lines (id, date, parent_id, sibling_key, title, description, time_of_day_minutes, deadline_days, deadline_date, repeat_days, source_task_id, is_collapsed, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 0, ?12, ?12)", params![id.0, request.date.as_str()?, request.parent_id.as_ref().map(|value| &value.0), request.sibling_key.0, time_and_values.0, time_and_values.1, time_and_values.2, time_and_values.3, deadline_date.as_ref().map(CivilDateInput::as_str).transpose()?, time_and_values.4, request.template_id.0, timestamp]).map_err(|_| AppError::storage_write_failed())?;
+        transaction.execute("INSERT INTO planner_lines (id, date, parent_id, sibling_key, title, description, time_of_day_minutes, deadline_days, deadline_date, repeat_days, source_task_id, alarm_enabled, is_collapsed, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 0, 0, ?12, ?12)", params![id.0, request.date.as_str()?, request.parent_id.as_ref().map(|value| &value.0), request.sibling_key.0, time_and_values.0, time_and_values.1, time_and_values.2, time_and_values.3, deadline_date.as_ref().map(CivilDateInput::as_str).transpose()?, time_and_values.4, request.template_id.0, timestamp]).map_err(|_| AppError::storage_write_failed())?;
         transaction
             .commit()
             .map_err(|_| AppError::storage_write_failed())?;
@@ -180,6 +180,7 @@ impl Database {
             deadline_date,
             repeat_days: time_and_values.4,
             source_task_id: Some(request.template_id.clone()),
+            alarm_enabled: false,
         })
     }
 }

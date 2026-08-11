@@ -27,6 +27,7 @@ export type PlannerLine = {
   deadlineDate: CivilDate | null
   repeatDays: number[]
   sourceTaskId: string | null
+  alarmEnabled: boolean
 }
 export type Note = { id: string; title: string; body: string }
 export type TaskTemplate = {
@@ -150,6 +151,7 @@ export function parsePlannerLines(value: unknown, expectedDate: CivilDate): Plan
         item["sourceTaskId"] === null || item["sourceTaskId"] === undefined
           ? null
           : text(item["sourceTaskId"], "source task id"),
+      alarmEnabled: item["alarmEnabled"] === true,
     }
   })
   for (const line of lines) {

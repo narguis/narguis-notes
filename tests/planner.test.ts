@@ -226,6 +226,7 @@ describe("visible planner tree", () => {
         deadlineDate: null,
         repeatDays: [],
         sourceTaskId: null,
+        alarmEnabled: false,
       },
       {
         id: "child",
@@ -240,6 +241,7 @@ describe("visible planner tree", () => {
         deadlineDate: null,
         repeatDays: [],
         sourceTaskId: null,
+        alarmEnabled: false,
       },
       {
         id: "grandchild",
@@ -254,6 +256,7 @@ describe("visible planner tree", () => {
         deadlineDate: null,
         repeatDays: [],
         sourceTaskId: null,
+        alarmEnabled: false,
       },
     ])
 

@@ -61,6 +61,7 @@ fn line_request(
         deadline_days: None,
         deadline_date: None,
         source_task_id: None,
+        alarm_enabled: false,
         repeat_days: String::new(),
     }
 }

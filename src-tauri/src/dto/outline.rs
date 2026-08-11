@@ -50,6 +50,8 @@ pub struct CreatePlannerLineRequest {
     #[serde(default)]
     pub source_task_id: Option<TaskTemplateId>,
     #[serde(default)]
+    pub alarm_enabled: bool,
+    #[serde(default)]
     pub repeat_days: String,
 }
 
@@ -66,6 +68,8 @@ pub struct UpdatePlannerLineRequest {
     pub deadline_date: Option<CivilDateInput>,
     #[serde(default)]
     pub source_task_id: Option<TaskTemplateId>,
+    #[serde(default)]
+    pub alarm_enabled: bool,
     #[serde(default)]
     pub repeat_days: String,
 }
@@ -112,6 +116,7 @@ pub struct PlannerLineDto {
     pub deadline_days: Option<u16>,
     pub deadline_date: Option<CivilDateInput>,
     pub source_task_id: Option<TaskTemplateId>,
+    pub alarm_enabled: bool,
     #[serde(default)]
     pub repeat_days: String,
 }

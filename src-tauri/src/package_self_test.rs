@@ -40,6 +40,7 @@ pub fn run(app_data_directory: &Path) -> Result<(), AppError> {
         deadline_days: None,
         deadline_date: None,
         source_task_id: None,
+        alarm_enabled: false,
         repeat_days: String::new(),
     })?;
     let child = database.create_planner_line(&CreatePlannerLineRequest {
@@ -52,6 +53,7 @@ pub fn run(app_data_directory: &Path) -> Result<(), AppError> {
         deadline_days: None,
         deadline_date: None,
         source_task_id: None,
+        alarm_enabled: false,
         repeat_days: String::new(),
     })?;
     let later_root = database.create_planner_line(&CreatePlannerLineRequest {
@@ -64,6 +66,7 @@ pub fn run(app_data_directory: &Path) -> Result<(), AppError> {
         deadline_days: None,
         deadline_date: None,
         source_task_id: None,
+        alarm_enabled: false,
         repeat_days: String::new(),
     })?;
     database.set_planner_line_collapsed(&SetPlannerLineCollapsedRequest {
