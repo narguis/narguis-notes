@@ -736,7 +736,7 @@ async function deleteBacklogLine(line: PlannerLine): Promise<void> {
   await loadBacklog()
 }
 
-function commitLineField(input: HTMLInputElement | HTMLTextAreaElement): void {
+async function commitLineField(input: HTMLInputElement | HTMLTextAreaElement): Promise<boolean> {
   const row = input.closest<HTMLElement>("[data-line-id]")
   const id = row?.dataset["lineId"]
   const field = input.dataset["lineField"]
@@ -746,9 +746,9 @@ function commitLineField(input: HTMLInputElement | HTMLTextAreaElement): void {
     line === undefined ||
     (field !== "title" && field !== "time" && field !== "description")
   )
-    return
+    return false
   const key = `${id}:${field}`
-  if (!editingLineFields.has(key)) return
+  if (!editingLineFields.has(key)) return false
   if (field === "title") line.title = input.value
   else if (field === "description") line.description = input.value === "" ? null : input.value
   else {
@@ -757,8 +757,8 @@ function commitLineField(input: HTMLInputElement | HTMLTextAreaElement): void {
       time === "" ? null : Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))
   }
   editingLineFields.delete(key)
-  void persistLine(line)
-  render()
+  await persistLine(line)
+  return true
 }
 
 function bindEvents(): void {
@@ -1060,22 +1060,31 @@ function bindEvents(): void {
         if (index < 0 || line === undefined) return
         event.preventDefault()
         if (index < visible.length - 1) editingLineFields.add(`${visible[index + 1]?.id}:title`)
-        commitLineField(input as HTMLInputElement)
-        if (index === visible.length - 1) addPlannerLine()
-        else
-          app
-            .querySelector<HTMLInputElement>(
-              `[data-line-id="${CSS.escape(visible[index + 1]?.id ?? "")}"] .line-title`,
-            )
-            ?.focus()
+        void commitLineField(input as HTMLInputElement).then(() => {
+          if (index === visible.length - 1) addPlannerLine()
+          else {
+            render()
+            app
+              .querySelector<HTMLInputElement>(
+                `[data-line-id="${CSS.escape(visible[index + 1]?.id ?? "")}"] .line-title`,
+              )
+              ?.focus()
+          }
+        })
       })
-      input.addEventListener("change", () => commitLineField(input as HTMLInputElement))
-      input.addEventListener("blur", () => commitLineField(input as HTMLInputElement))
+      input.addEventListener(
+        "change",
+        () => void commitLineField(input as HTMLInputElement).then(render),
+      )
+      input.addEventListener(
+        "blur",
+        () => void commitLineField(input as HTMLInputElement).then(render),
+      )
       input.addEventListener("keydown", (event) => {
         if (!(event instanceof KeyboardEvent) || event.key !== "Enter") return
         if (input.dataset["lineField"] === "description") {
           event.preventDefault()
-          commitLineField(input as HTMLTextAreaElement)
+          void commitLineField(input as HTMLTextAreaElement).then(render)
         }
       })
     })
