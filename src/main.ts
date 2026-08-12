@@ -161,12 +161,18 @@ function renderTaskPreview(): string {
 
 function renderNoteEditor(): string {
   const note = noteEditor === "new" ? null : noteEditor
-  return `<div class="workspace-heading"><div><p class="eyebrow">${note ? "Edit note" : "New note"}</p><h2>Notes</h2></div><button type="button" data-cancel-editor>Back to notes</button></div><section class="paper-panel workspace-panel"><form id="note-form" class="editor-form"><input type="hidden" name="id" value="${note ? escapeHtml(note.id) : ""}" /><input name="title" required maxlength="200" value="${note ? escapeHtml(note.title) : ""}" placeholder="Title" aria-label="Note title" /><textarea name="body" maxlength="10000" placeholder="Write a note...">${note ? escapeHtml(note.body) : ""}</textarea><div class="editor-actions"><button type="submit">${note ? "Save changes" : "Create note"}</button>${note ? `<button type="button" data-delete-editor-note>Delete note</button>` : ""}</div></form></section>`
+  return `<div class="workspace-heading"><div><p class="eyebrow">${note ? "Edit note" : "New note"}</p><h2>Notes</h2></div><button type="button" data-cancel-editor>Back to notes</button></div><section class="paper-panel workspace-panel"><form id="note-form" class="editor-form"><input type="hidden" name="id" value="${note ? escapeHtml(note.id) : ""}" /><input name="title" required maxlength="200" value="${note ? escapeHtml(note.title) : ""}" placeholder="Title" aria-label="Note title" /><div class="markdown-editor">${renderMarkdownToolbar()}<textarea name="body" maxlength="10000" placeholder="Write a note...">${note ? escapeHtml(note.body) : ""}</textarea></div><div class="editor-actions"><button type="submit">${note ? "Save changes" : "Create note"}</button>${note ? `<button type="button" data-delete-editor-note>Delete note</button>` : ""}</div></form></section>`
 }
 
 function renderTemplateEditor(): string {
   const template = templateEditor === "new" ? null : templateEditor
-  return `<div class="workspace-heading"><div><p class="eyebrow">${template ? "Edit task" : "New task"}</p><h2>Tasks</h2></div><button type="button" data-cancel-editor>Back to tasks</button></div><section class="paper-panel workspace-panel"><form id="task-form" class="editor-form task-editor-form"><input type="hidden" name="id" value="${template ? escapeHtml(template.id) : ""}" /><div class="task-editor-line"><input name="title" required maxlength="200" value="${template ? escapeHtml(template.title) : ""}" placeholder="Task title" aria-label="Task title" /><label>Time <input name="time" type="text" inputmode="numeric" maxlength="5" pattern="^([01]\\d|2[0-3]):[0-5]\\d$" value="${template?.timeOfDayMinutes === null || template === null ? "" : formatMinutes(template.timeOfDayMinutes)}" placeholder="HH:MM" /></label></div><details class="task-editor-details"><summary>Details</summary><textarea name="body" maxlength="10000" placeholder="Optional task details">${template ? escapeHtml(template.body) : ""}</textarea><label>Deadline in days <input name="deadlineDays" type="number" min="0" max="365" value="${template?.deadlineDays ?? ""}" placeholder="Optional" /></label><div class="weekday-picker"><span>Repeat weekly</span><div>${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, index) => `<button type="button" class="weekday-button ${(template?.repeatDays ?? []).includes(index) ? "selected" : ""}" data-weekday="${index}">${day.slice(0, 3)}</button>`).join("")}</div><input type="hidden" name="repeatDays" value="${repeatDaysValue(template?.repeatDays ?? [])}" /></div></details><div class="editor-actions"><button type="submit">${template ? "Save changes" : "Create task"}</button>${template ? `<button type="button" data-delete-editor-task>Delete task</button>` : ""}</div></form></section>`
+  const hasDeadline = template?.deadlineDays != null
+  const hasRepeat = (template?.repeatDays ?? []).length > 0
+  return `<div class="workspace-heading"><div><p class="eyebrow">${template ? "Edit task" : "New task"}</p><h2>Tasks</h2></div><button type="button" data-cancel-editor>Back to tasks</button></div><section class="paper-panel workspace-panel"><form id="task-form" class="editor-form task-editor-form"><input type="hidden" name="id" value="${template ? escapeHtml(template.id) : ""}" /><div class="task-editor-line"><input name="title" required maxlength="200" value="${template ? escapeHtml(template.title) : ""}" placeholder="Task title" aria-label="Task title" /><label>Time <input name="time" type="text" inputmode="numeric" maxlength="5" pattern="^([01]\\d|2[0-3]):[0-5]\\d$" value="${template?.timeOfDayMinutes === null || template === null ? "" : formatMinutes(template.timeOfDayMinutes)}" placeholder="HH:MM" /></label></div><details class="task-editor-details"><summary>Details</summary><div class="markdown-editor">${renderMarkdownToolbar()}<textarea name="body" maxlength="10000" placeholder="Optional task details">${template ? escapeHtml(template.body) : ""}</textarea></div><label class="option-toggle"><input type="checkbox" name="hasDeadline" ${hasDeadline ? "checked" : ""} /> Use deadline</label><label class="deadline-field">Deadline in days <input name="deadlineDays" type="number" min="0" max="365" value="${template?.deadlineDays ?? ""}" placeholder="Optional" ${hasDeadline ? "" : "disabled"} /></label><label class="option-toggle"><input type="checkbox" name="hasRepeat" ${hasRepeat ? "checked" : ""} /> Repeat weekly</label><div class="weekday-picker"><div>${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, index) => `<button type="button" class="weekday-button ${(template?.repeatDays ?? []).includes(index) ? "selected" : ""}" data-weekday="${index}" ${hasRepeat ? "" : "disabled"}>${day.slice(0, 3)}</button>`).join("")}</div><input type="hidden" name="repeatDays" value="${repeatDaysValue(template?.repeatDays ?? [])}" /></div></details><div class="editor-actions"><button type="submit">${template ? "Save changes" : "Create task"}</button>${template ? `<button type="button" data-delete-editor-task>Delete task</button>` : ""}</div></form></section>`
+}
+
+function renderMarkdownToolbar(): string {
+  return `<div class="markdown-toolbar"><button type="button" data-md-action="bold"><strong>B</strong></button><button type="button" data-md-action="italic"><em>I</em></button><button type="button" data-md-action="code">Code</button><button type="button" data-md-action="bullet">• List</button></div>`
 }
 
 function formatDate(date: CivilDate): string {
@@ -359,11 +365,11 @@ function renderLine(line: PlannerLine): string {
       ? `<span class="line-title-display">${escapeHtml(line.title)}</span>`
       : `<button class="line-title-display" type="button" data-line-action="edit-title" aria-label="Edit ${escapeHtml(line.title || "blank plan item")}">${escapeHtml(line.title)}</button>`
   const detailControl = editingDescription
-    ? `<textarea class="description-field" data-line-field="description" placeholder="Add details..." aria-label="Details for ${escapeHtml(line.title || "blank line")}">${escapeHtml(line.description ?? "")}</textarea>`
+    ? `<div class="markdown-editor inline-markdown-editor">${renderMarkdownToolbar()}<textarea class="description-field" data-line-field="description" placeholder="Add details..." aria-label="Details for ${escapeHtml(line.title || "blank line")}">${escapeHtml(line.description ?? "")}</textarea></div>`
     : crossed
       ? `<div class="markdown-preview description-display locked-description">${line.description ? renderMarkdown(line.description) : ""}</div>`
       : `<button class="markdown-preview description-display" type="button" data-line-action="edit-description" aria-label="Edit details for ${escapeHtml(line.title || "blank line")}">${line.description ? renderMarkdown(line.description) : '<span class="empty-detail">Add details...</span>'}</button>`
-  return `<li class="planner-line ${line.title === "" ? "blank-line " : ""}${crossed ? "crossed" : ""}" style="--depth:${depth}" data-line-id="${escapeHtml(line.id)}"><button class="collapse" type="button" data-line-action="toggle-description" aria-label="${expanded ? "Hide details" : "Show details"}">${expanded ? "−" : "+"}</button><span class="drag-handle" draggable="true" title="Drag to reorder" aria-hidden="true">⋮⋮</span>${timeControl}${alarmControl}${titleControl}<span class="deadline-badge">${deadline}</span><button class="cross-line" type="button" aria-label="${crossed ? "Uncross" : "Cross off"} ${escapeHtml(line.title || "blank line")}">${crossed ? "✓" : "□"}</button><details class="line-actions"><summary aria-label="More actions">...</summary><div class="line-menu"><button type="button" data-line-action="next-day">Move to next day</button><button type="button" data-line-action="save-template">Save as task</button><button type="button" data-line-action="delete-line">Delete line</button></div></details>${expanded ? `<div class="line-detail">${detailControl}</div>` : ""}</li>`
+  return `<li class="planner-line ${line.title === "" ? "blank-line " : ""}${crossed ? "crossed" : ""}" style="--depth:${depth}" data-line-id="${escapeHtml(line.id)}"><div class="planner-line-main"><button class="collapse" type="button" data-line-action="toggle-description" aria-label="${expanded ? "Hide details" : "Show details"}">${expanded ? "−" : "+"}</button><span class="drag-handle" draggable="true" title="Drag to reorder" aria-hidden="true">⋮⋮</span>${timeControl}${alarmControl}${titleControl}<span class="deadline-badge">${deadline}</span><button class="cross-line" type="button" aria-label="${crossed ? "Uncross" : "Cross off"} ${escapeHtml(line.title || "blank line")}">${crossed ? "✓" : "□"}</button><details class="line-actions"><summary aria-label="More actions">...</summary><div class="line-menu"><button type="button" data-line-action="next-day">Move to next day</button><button type="button" data-line-action="save-template">Save as task</button><button type="button" data-line-action="delete-line">Delete line</button></div></details></div>${expanded ? `<div class="line-detail">${detailControl}</div>` : ""}</li>`
 }
 
 function renderTemplatePicker(): string {
@@ -450,13 +456,21 @@ function fillPage(existing: PlannerLine[], date: CivilDate = selectedDate): Plan
   return result
 }
 function loadCrossedLines(): void {
-  crossedLines = new Set([
-    ...readLocal<string[]>("crossed-entities", []),
-    ...readLocal<string[]>(`crossed:${selectedDate.value}`, []),
-  ])
+  crossedLines = new Set([...readLocal<string[]>("crossed-entities", [])])
 }
 function persistCrossedLines(): void {
   writeLocal("crossed-entities", [...crossedLines])
+}
+
+function toggleMarkdown(textarea: HTMLTextAreaElement, action: string): void {
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  const selected = textarea.value.slice(start, end)
+  const wrapper =
+    action === "bold" ? "**" : action === "italic" ? "_" : action === "code" ? "`" : ""
+  const value = action === "bullet" ? `- ${selected}` : `${wrapper}${selected || "text"}${wrapper}`
+  textarea.setRangeText(value, start, end, "select")
+  textarea.focus()
 }
 function markDirtyLine(line: PlannerLine): void {
   const dirty = readLocal<PlannerLine[]>(`dirty-lines:${selectedDate.value}`, []).filter(
@@ -749,15 +763,30 @@ async function commitLineField(input: HTMLInputElement | HTMLTextAreaElement): P
     return false
   const key = `${id}:${field}`
   if (!editingLineFields.has(key)) return false
-  if (field === "title") line.title = input.value
-  else if (field === "description") line.description = input.value === "" ? null : input.value
+  if (field === "title") {
+    const title = input.value.trim()
+    if (title === "") {
+      line.title = ""
+      line.description = null
+      line.timeOfDayMinutes = null
+      line.alarmEnabled = false
+      line.deadlineDays = null
+      line.deadlineDate = null
+      line.repeatDays = []
+      editingLineFields.delete(key)
+      writeLocal(`lines:${selectedDate.value}`, lines)
+      return true
+    }
+    line.title = input.value
+  } else if (field === "description") line.description = input.value === "" ? null : input.value
   else {
     const time = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(input.value) ? input.value : ""
     line.timeOfDayMinutes =
       time === "" ? null : Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))
   }
   editingLineFields.delete(key)
-  await persistLine(line)
+  if (line.title.trim() !== "") await persistLine(line)
+  else writeLocal(`lines:${selectedDate.value}`, lines)
   return true
 }
 
@@ -843,6 +872,29 @@ function bindEvents(): void {
         : [...selected, day]
       input.value = repeatDaysValue(next)
       button.classList.toggle("selected", next.includes(day))
+    })
+  })
+  app
+    .querySelector<HTMLInputElement>("[name='hasDeadline']")
+    ?.addEventListener("change", (event) => {
+      const checked = (event.currentTarget as HTMLInputElement).checked
+      const input = app.querySelector<HTMLInputElement>("[name='deadlineDays']")
+      if (input !== null) input.disabled = !checked
+    })
+  app.querySelector<HTMLInputElement>("[name='hasRepeat']")?.addEventListener("change", (event) => {
+    const checked = (event.currentTarget as HTMLInputElement).checked
+    app.querySelectorAll<HTMLButtonElement>("[data-weekday]").forEach((button) => {
+      button.disabled = !checked
+    })
+  })
+  app.querySelectorAll<HTMLButtonElement>("[data-md-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const textarea = button
+        .closest(".markdown-editor")
+        ?.querySelector<HTMLTextAreaElement>("textarea")
+      const action = button.dataset["mdAction"]
+      if (textarea !== null && textarea !== undefined && action !== undefined)
+        toggleMarkdown(textarea, action)
     })
   })
   app.querySelector<HTMLButtonElement>("[data-new-note]")?.addEventListener("click", () => {
@@ -1059,14 +1111,15 @@ function bindEvents(): void {
         const index = visible.findIndex((candidate) => candidate.id === id)
         if (index < 0 || line === undefined) return
         event.preventDefault()
-        if (index < visible.length - 1) editingLineFields.add(`${visible[index + 1]?.id}:title`)
+        const nextId = visible[index + 1]?.id
         void commitLineField(input as HTMLInputElement).then(() => {
           if (index === visible.length - 1) addPlannerLine()
           else {
+            editingLineFields.add(`${nextId}:title`)
             render()
             app
               .querySelector<HTMLInputElement>(
-                `[data-line-id="${CSS.escape(visible[index + 1]?.id ?? "")}"] .line-title`,
+                `[data-line-id="${CSS.escape(nextId ?? "")}"] .line-title`,
               )
               ?.focus()
           }
@@ -1076,16 +1129,14 @@ function bindEvents(): void {
         "change",
         () => void commitLineField(input as HTMLInputElement).then(render),
       )
-      input.addEventListener(
-        "blur",
-        () => void commitLineField(input as HTMLInputElement).then(render),
-      )
+      input.addEventListener("blur", () => {
+        void commitLineField(input as HTMLInputElement).then(() => {
+          if (input.value.trim() !== "") render()
+        })
+      })
       input.addEventListener("keydown", (event) => {
         if (!(event instanceof KeyboardEvent) || event.key !== "Enter") return
-        if (input.dataset["lineField"] === "description") {
-          event.preventDefault()
-          void commitLineField(input as HTMLTextAreaElement).then(render)
-        }
+        // Multiline descriptions keep Enter for a newline and save on blur.
       })
     })
   app.querySelectorAll<HTMLElement>(".planner-line").forEach((row) => {
@@ -1098,8 +1149,15 @@ function bindEvents(): void {
         event.dataTransfer.setData("text/plain", draggedLineId ?? "")
       }
     })
+    handle?.addEventListener("dragover", (event) => {
+      event.preventDefault()
+      row.classList.add("drop-target")
+    })
     handle?.addEventListener("dragend", () => {
       row.classList.remove("dragging")
+      app.querySelectorAll(".drop-target").forEach((target) => {
+        target.classList.remove("drop-target")
+      })
       draggedLineId = undefined
     })
     row.addEventListener("dragover", (event) => event.preventDefault())
@@ -1108,7 +1166,32 @@ function bindEvents(): void {
       const targetId = row.dataset["lineId"]
       if (draggedLineId !== undefined && targetId !== undefined && draggedLineId !== targetId)
         reorderLineBefore(draggedLineId, targetId)
+      row.classList.remove("drop-target")
       draggedLineId = undefined
+    })
+  })
+  app.querySelectorAll<HTMLInputElement>(".line-title").forEach((input) => {
+    input.addEventListener("keydown", (event) => {
+      if (!(event instanceof KeyboardEvent)) return
+      const row = input.closest<HTMLElement>("[data-line-id]")
+      const id = row?.dataset["lineId"]
+      const visible = flattenVisiblePlannerLines(lines)
+      const index = visible.findIndex((line) => line.id === id)
+      if (id === undefined || index < 0) return
+      if (event.ctrlKey && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+        event.preventDefault()
+        const target = visible[index + (event.key === "ArrowDown" ? 1 : -1)]
+        if (target !== undefined) reorderLineBefore(id, target.id)
+      } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault()
+        const next = visible[index + (event.key === "ArrowDown" ? 1 : -1)]
+        if (next === undefined) return
+        editingLineFields.add(`${next.id}:title`)
+        render()
+        app
+          .querySelector<HTMLInputElement>(`[data-line-id="${CSS.escape(next.id)}"] .line-title`)
+          ?.focus()
+      }
     })
   })
 }
@@ -1415,9 +1498,10 @@ async function createTemplate(form: FormData): Promise<void> {
     ? Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))
     : null
   const deadlineValue = String(form.get("deadlineDays") ?? "")
-  const deadlineDays = deadlineValue === "" ? null : Number(deadlineValue)
+  const deadlineDays =
+    form.get("hasDeadline") === "on" && deadlineValue !== "" ? Number(deadlineValue) : null
   const repeatDays =
-    String(form.get("repeatDays") ?? "") === ""
+    form.get("hasRepeat") !== "on" || String(form.get("repeatDays") ?? "") === ""
       ? []
       : String(form.get("repeatDays")).split(",").map(Number)
   const template: TaskTemplate = {

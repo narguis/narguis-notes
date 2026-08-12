@@ -139,6 +139,31 @@ h3 {
   flex-wrap: wrap;
   gap: 8px;
 }
+.markdown-editor {
+  border: 1px solid var(--edge);
+  background: rgb(255 253 247 / 70%);
+}
+.markdown-toolbar {
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--edge);
+  background: rgb(236 233 225 / 45%);
+}
+.markdown-toolbar button {
+  min-width: 30px;
+  padding: 4px 7px;
+  border: 0;
+  color: var(--muted);
+  font:
+    12px system-ui,
+    sans-serif;
+}
+.markdown-editor textarea {
+  min-height: 150px;
+  border: 0;
+  background: transparent;
+}
 .editor-form input,
 .editor-form textarea {
   min-height: auto;
@@ -190,6 +215,26 @@ h3 {
 }
 .task-editor-details textarea {
   margin-top: 10px;
+}
+.option-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.deadline-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+.deadline-field input {
+  width: 120px;
+  min-height: 40px;
+}
+.weekday-picker button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 .timer-panel {
   background-image: none;
@@ -488,9 +533,19 @@ textarea::placeholder {
   grid-template-columns: 28px 24px 88px 28px minmax(0, 1fr) 68px 28px 28px;
   align-items: center;
   gap: 8px;
+  grid-template-rows: minmax(42px, auto) auto;
   min-height: 42px;
   margin-left: calc(var(--depth) * 28px);
   border-bottom: 1px solid var(--rule);
+}
+.planner-line-main {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  grid-template-columns: 28px 24px 88px 28px minmax(0, 1fr) 68px 28px 28px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 .deadline-badge {
   min-width: 0;
@@ -508,6 +563,9 @@ textarea::placeholder {
 }
 .planner-line.dragging {
   opacity: 0.45;
+}
+.planner-line.drop-target {
+  border-top: 3px solid #416b7a;
 }
 .drag-handle {
   color: var(--muted);
@@ -670,7 +728,10 @@ textarea::placeholder {
   text-transform: uppercase;
 }
 .line-detail {
-  grid-column: 2 / -1;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-width: 0;
+  margin: 0 0 8px 60px;
   padding: 4px 0 12px;
 }
 .detail-tabs {
@@ -845,6 +906,9 @@ textarea::placeholder {
     display: block;
   }
   .planner-line {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .planner-line-main {
     grid-template-columns: 28px 20px 70px 24px minmax(0, 1fr) 58px 24px 24px;
   }
   .deadline-badge {
