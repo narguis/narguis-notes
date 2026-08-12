@@ -31,7 +31,8 @@ let notes: Note[] = []
 let templates: TaskTemplate[] = []
 let crossedLines = new Set<string>()
 const expandedLines = new Set<string>()
-const editingLineFields = new Set<string>()
+let editingLine: { id: string; field: "title" | "time" | "description" } | null = null
+let selectedLineId: string | null = null
 let activeView: "planner" | "notes" | "tasks" | "unfinished" | "timers" = "planner"
 let plannerMode: "daily" | "weekly" = "daily"
 let selectedWeek = startOfWeek(today)
@@ -345,10 +346,12 @@ function renderLine(line: PlannerLine): string {
   const depth = Math.min(lineDepth(line), 4)
   const time = line.timeOfDayMinutes === null ? "" : formatMinutes(line.timeOfDayMinutes)
   const crossed = crossedLines.has(lineIdentity(line))
+  const selected = selectedLineId === line.id
   const expanded = expandedLines.has(line.id)
-  const editingTitle = !crossed && editingLineFields.has(`${line.id}:title`)
-  const editingDescription = !crossed && editingLineFields.has(`${line.id}:description`)
-  const editingTime = !crossed && editingLineFields.has(`${line.id}:time`)
+  const editingTitle = !crossed && editingLine?.id === line.id && editingLine.field === "title"
+  const editingDescription =
+    !crossed && editingLine?.id === line.id && editingLine.field === "description"
+  const editingTime = !crossed && editingLine?.id === line.id && editingLine.field === "time"
   const deadline = deadlineText(line, selectedDate)
   const timeControl = crossed
     ? `<span class="time-locked">${time || ""}</span>`
@@ -369,7 +372,7 @@ function renderLine(line: PlannerLine): string {
     : crossed
       ? `<div class="markdown-preview description-display locked-description">${line.description ? renderMarkdown(line.description) : ""}</div>`
       : `<button class="markdown-preview description-display" type="button" data-line-action="edit-description" aria-label="Edit details for ${escapeHtml(line.title || "blank line")}">${line.description ? renderMarkdown(line.description) : '<span class="empty-detail">Add details...</span>'}</button>`
-  return `<li class="planner-line ${line.title === "" ? "blank-line " : ""}${crossed ? "crossed" : ""}" style="--depth:${depth}" data-line-id="${escapeHtml(line.id)}"><div class="planner-line-main"><button class="collapse" type="button" data-line-action="toggle-description" aria-label="${expanded ? "Hide details" : "Show details"}">${expanded ? "−" : "+"}</button><span class="drag-handle" draggable="true" title="Drag to reorder" aria-hidden="true">⋮⋮</span>${timeControl}${alarmControl}${titleControl}<span class="deadline-badge">${deadline}</span><button class="cross-line" type="button" aria-label="${crossed ? "Uncross" : "Cross off"} ${escapeHtml(line.title || "blank line")}">${crossed ? "✓" : "□"}</button><details class="line-actions"><summary aria-label="More actions">...</summary><div class="line-menu"><button type="button" data-line-action="next-day">Move to next day</button><button type="button" data-line-action="save-template">Save as task</button><button type="button" data-line-action="delete-line">Delete line</button></div></details></div>${expanded ? `<div class="line-detail">${detailControl}</div>` : ""}</li>`
+  return `<li class="planner-line ${line.title === "" ? "blank-line " : ""}${crossed ? "crossed " : ""}${selected ? "selected" : ""}" style="--depth:${depth}" data-line-id="${escapeHtml(line.id)}"><div class="planner-line-main"><button class="collapse" type="button" data-line-action="toggle-description" aria-label="${expanded ? "Hide details" : "Show details"}">${expanded ? "−" : "+"}</button><span class="drag-handle" draggable="true" title="Drag to reorder" aria-hidden="true">⋮⋮</span>${timeControl}${alarmControl}${titleControl}<span class="deadline-badge">${deadline}</span><button class="cross-line" type="button" aria-label="${crossed ? "Uncross" : "Cross off"} ${escapeHtml(line.title || "blank line")}">${crossed ? "✓" : "□"}</button><details class="line-actions"><summary aria-label="More actions">...</summary><div class="line-menu"><button type="button" data-line-action="next-day">Move to next day</button><button type="button" data-line-action="save-template">Save as task</button><button type="button" data-line-action="delete-line">Delete line</button></div></details></div>${expanded ? `<div class="line-detail">${detailControl}</div>` : ""}</li>`
 }
 
 function renderTemplatePicker(): string {
@@ -455,6 +458,27 @@ function fillPage(existing: PlannerLine[], date: CivilDate = selectedDate): Plan
     result.push(draftLine(index, date))
   return result
 }
+
+function firstFreeLine(collection: PlannerLine[]): PlannerLine | undefined {
+  return flattenVisiblePlannerLines(collection).find((line) => line.title.trim() === "")
+}
+
+function nextSiblingKey(collection: PlannerLine[]): string {
+  const occupied = flattenVisiblePlannerLines(collection).filter((line) => line.title.trim() !== "")
+  return String(occupied.length + 1).padStart(4, "0")
+}
+
+async function ensureTasksLoaded(): Promise<void> {
+  if (isDesktop()) {
+    try {
+      templates = parseTaskTemplates(await call<unknown>("list_task_templates"))
+      return
+    } catch {
+      // Use the local fallback below.
+    }
+  }
+  templates = readLocal<TaskTemplate[]>("templates", [])
+}
 function loadCrossedLines(): void {
   crossedLines = new Set([...readLocal<string[]>("crossed-entities", [])])
 }
@@ -514,11 +538,12 @@ function reorderLineBefore(sourceId: string, targetId: string): void {
 async function moveLineToNextDay(line: PlannerLine): Promise<void> {
   const nextDate = shiftCivilDate(selectedDate, 1)
   const nextLines = readLocal<PlannerLine[]>(`lines:${nextDate.value}`, [])
+  const nextSlot = firstFreeLine(fillPage(nextLines, nextDate))
   const moved: PlannerLine = {
     ...line,
     date: nextDate,
     parentId: null,
-    siblingKey: String(nextLines.length + 1).padStart(4, "0"),
+    siblingKey: nextSlot?.siblingKey ?? nextSiblingKey(nextLines),
   }
   if (isDesktop() && !line.id.startsWith("draft-") && !line.id.startsWith("line-")) {
     try {
@@ -545,7 +570,11 @@ async function moveLineToNextDay(line: PlannerLine): Promise<void> {
   }
   lines = lines.filter((candidate) => candidate.id !== line.id)
   writeLocal(`lines:${selectedDate.value}`, lines)
-  writeLocal(`lines:${nextDate.value}`, [...nextLines, moved])
+  const nextWithoutSlot =
+    nextSlot === undefined
+      ? nextLines
+      : nextLines.filter((candidate) => candidate.id !== nextSlot.id)
+  writeLocal(`lines:${nextDate.value}`, [...nextWithoutSlot, moved])
   selectedDate = nextDate
   await loadPage()
 }
@@ -624,7 +653,7 @@ async function insertTemplateIntoLine(templateId: string, line: PlannerLine): Pr
 async function importTaskIntoCurrentDay(templateId: string): Promise<void> {
   const task = templates.find((candidate) => candidate.id === templateId)
   if (task === undefined) return
-  const freeLine = flattenVisiblePlannerLines(lines).find((candidate) => candidate.title === "")
+  const freeLine = firstFreeLine(lines)
   if (freeLine !== undefined) {
     freeLine.title = task.title
     freeLine.description = task.body || null
@@ -666,7 +695,8 @@ async function importTaskIntoCurrentDay(templateId: string): Promise<void> {
 
 function addPlannerLine(): void {
   const id = `line-${Date.now()}`
-  editingLineFields.add(`${id}:title`)
+  selectedLineId = id
+  editingLine = { id, field: "title" }
   lines = [...lines, { ...draftLine(lines.length), id }]
   writeLocal(`lines:${selectedDate.value}`, lines)
   render()
@@ -761,8 +791,7 @@ async function commitLineField(input: HTMLInputElement | HTMLTextAreaElement): P
     (field !== "title" && field !== "time" && field !== "description")
   )
     return false
-  const key = `${id}:${field}`
-  if (!editingLineFields.has(key)) return false
+  if (editingLine?.id !== id || editingLine.field !== field) return false
   if (field === "title") {
     const title = input.value.trim()
     if (title === "") {
@@ -773,7 +802,7 @@ async function commitLineField(input: HTMLInputElement | HTMLTextAreaElement): P
       line.deadlineDays = null
       line.deadlineDate = null
       line.repeatDays = []
-      editingLineFields.delete(key)
+      editingLine = null
       writeLocal(`lines:${selectedDate.value}`, lines)
       return true
     }
@@ -784,9 +813,28 @@ async function commitLineField(input: HTMLInputElement | HTMLTextAreaElement): P
     line.timeOfDayMinutes =
       time === "" ? null : Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))
   }
-  editingLineFields.delete(key)
+  editingLine = null
   if (line.title.trim() !== "") await persistLine(line)
   else writeLocal(`lines:${selectedDate.value}`, lines)
+  return true
+}
+
+function commitTitleImmediately(line: PlannerLine, value: string): boolean {
+  const title = value.trim()
+  if (title === "") {
+    line.title = ""
+    line.description = null
+    line.timeOfDayMinutes = null
+    line.alarmEnabled = false
+    line.deadlineDays = null
+    line.deadlineDate = null
+    line.repeatDays = []
+    writeLocal(`lines:${selectedDate.value}`, lines)
+    return false
+  }
+  line.title = value
+  writeLocal(`lines:${selectedDate.value}`, lines)
+  void persistLine(line)
   return true
 }
 
@@ -921,8 +969,10 @@ function bindEvents(): void {
     render()
   })
   app.querySelector<HTMLButtonElement>("#import-task")?.addEventListener("click", () => {
-    templatePickerOpen = true
-    render()
+    void ensureTasksLoaded().then(() => {
+      templatePickerOpen = true
+      render()
+    })
   })
   app
     .querySelector<HTMLButtonElement>("[data-close-template-picker]")
@@ -1064,8 +1114,17 @@ function bindEvents(): void {
         else expandedLines.add(id as string)
         render()
       } else if (action === "edit-title" || action === "edit-description") {
+        selectedLineId = id as string
+        if (
+          action === "edit-title" &&
+          line.title.trim() !== "" &&
+          (editingLine?.id !== id || editingLine?.field !== "title")
+        ) {
+          render()
+          return
+        }
         const field = action === "edit-title" ? "title" : "description"
-        editingLineFields.add(`${id}:${field}`)
+        editingLine = { id: id as string, field }
         if (field === "description") expandedLines.add(id as string)
         render()
         app
@@ -1074,9 +1133,7 @@ function bindEvents(): void {
           )
           ?.focus()
       } else if (action === "toggle-time") {
-        const key = `${id}:time`
-        if (editingLineFields.has(key)) editingLineFields.delete(key)
-        else editingLineFields.add(key)
+        editingLine = { id: id as string, field: "time" }
         render()
         app
           .querySelector<HTMLInputElement>(
@@ -1109,19 +1166,18 @@ function bindEvents(): void {
         const id = row?.dataset["lineId"]
         const line = lines.find((candidate) => candidate.id === id)
         const index = visible.findIndex((candidate) => candidate.id === id)
-        if (index < 0 || line === undefined) return
+        if (index < 0 || line === undefined || id === undefined) return
+        selectedLineId = id
         event.preventDefault()
         const nextId = visible[index + 1]?.id
-        void commitLineField(input as HTMLInputElement).then(() => {
+        const hasTitle = commitTitleImmediately(line, input.value)
+        if (!hasTitle) return
+        editingLine = null
+        void Promise.resolve().then(() => {
           if (index === visible.length - 1) addPlannerLine()
           else {
-            editingLineFields.add(`${nextId}:title`)
+            selectedLineId = nextId ?? null
             render()
-            app
-              .querySelector<HTMLInputElement>(
-                `[data-line-id="${CSS.escape(nextId ?? "")}"] .line-title`,
-              )
-              ?.focus()
           }
         })
       })
@@ -1140,6 +1196,12 @@ function bindEvents(): void {
       })
     })
   app.querySelectorAll<HTMLElement>(".planner-line").forEach((row) => {
+    row.addEventListener("click", (event) => {
+      if ((event.target as Element).closest("button, input, textarea, summary, .drag-handle"))
+        return
+      selectedLineId = row.dataset["lineId"] ?? null
+      render()
+    })
     const handle = row.querySelector<HTMLElement>(".drag-handle")
     handle?.addEventListener("dragstart", (event) => {
       draggedLineId = row.dataset["lineId"]
@@ -1151,6 +1213,9 @@ function bindEvents(): void {
     })
     handle?.addEventListener("dragover", (event) => {
       event.preventDefault()
+      app.querySelectorAll(".drop-target").forEach((target) => {
+        if (target !== row) target.classList.remove("drop-target")
+      })
       row.classList.add("drop-target")
     })
     handle?.addEventListener("dragend", () => {
@@ -1168,30 +1233,6 @@ function bindEvents(): void {
         reorderLineBefore(draggedLineId, targetId)
       row.classList.remove("drop-target")
       draggedLineId = undefined
-    })
-  })
-  app.querySelectorAll<HTMLInputElement>(".line-title").forEach((input) => {
-    input.addEventListener("keydown", (event) => {
-      if (!(event instanceof KeyboardEvent)) return
-      const row = input.closest<HTMLElement>("[data-line-id]")
-      const id = row?.dataset["lineId"]
-      const visible = flattenVisiblePlannerLines(lines)
-      const index = visible.findIndex((line) => line.id === id)
-      if (id === undefined || index < 0) return
-      if (event.ctrlKey && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
-        event.preventDefault()
-        const target = visible[index + (event.key === "ArrowDown" ? 1 : -1)]
-        if (target !== undefined) reorderLineBefore(id, target.id)
-      } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        event.preventDefault()
-        const next = visible[index + (event.key === "ArrowDown" ? 1 : -1)]
-        if (next === undefined) return
-        editingLineFields.add(`${next.id}:title`)
-        render()
-        app
-          .querySelector<HTMLInputElement>(`[data-line-id="${CSS.escape(next.id)}"] .line-title`)
-          ?.focus()
-      }
     })
   })
 }
@@ -1353,22 +1394,23 @@ async function loadBacklog(): Promise<void> {
 }
 
 async function copyBacklogLine(line: PlannerLine, date: CivilDate): Promise<void> {
+  const existing = readLocal<PlannerLine[]>(`lines:${date.value}`, [])
+  const slot = firstFreeLine(fillPage(existing, date))
   const moved: PlannerLine = {
     ...line,
     id: line.id.startsWith("repeat-") ? `line-${Date.now()}` : line.id,
     date,
     parentId: null,
-    siblingKey: String(readLocal<PlannerLine[]>(`lines:${date.value}`, []).length + 1).padStart(
-      4,
-      "0",
-    ),
+    siblingKey: slot?.siblingKey ?? nextSiblingKey(existing),
     deadlineDate: line.deadlineDays == null ? null : shiftCivilDate(date, line.deadlineDays),
     repeatDays: [],
   }
   const source = readLocal<PlannerLine[]>(`lines:${line.date.value}`, []).filter(
     (candidate) => candidate.id !== line.id,
   )
-  const next = [...readLocal<PlannerLine[]>(`lines:${date.value}`, []), moved]
+  const withoutSlot =
+    slot === undefined ? existing : existing.filter((candidate) => candidate.id !== slot.id)
+  const next = [...withoutSlot, moved]
   writeLocal(`lines:${line.date.value}`, source)
   writeLocal(`lines:${date.value}`, next)
   if (isDesktop() && !line.id.startsWith("repeat-")) {
@@ -1554,6 +1596,15 @@ async function createTemplate(form: FormData): Promise<void> {
 
 document.addEventListener("click", (event) => {
   const target = event.target
+  if (
+    selectedLineId !== null &&
+    target instanceof Element &&
+    target.closest(".planner-line") === null
+  ) {
+    selectedLineId = null
+    render()
+    return
+  }
   if (target instanceof Element) {
     const details = target.closest("details")
     if (details !== null) {
@@ -1573,6 +1624,35 @@ render()
 void loadPage()
 void loadBacklog()
 timers = readLocal<TimerEntry[]>("timers", [])
+document.addEventListener("keydown", (event) => {
+  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
+    return
+  if (selectedLineId === null || activeView !== "planner" || plannerMode !== "daily") return
+  const visible = flattenVisiblePlannerLines(lines)
+  const index = visible.findIndex((line) => line.id === selectedLineId)
+  if (index < 0) return
+  if (editingLine !== null) return
+  if (event.ctrlKey && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+    event.preventDefault()
+    const target = visible[index + (event.key === "ArrowDown" ? 1 : -1)]
+    if (target !== undefined) reorderLineBefore(selectedLineId, target.id)
+  } else if (event.key === "Enter") {
+    const line = visible[index]
+    if (line === undefined || crossedLines.has(lineIdentity(line))) return
+    event.preventDefault()
+    editingLine = { id: line.id, field: "title" }
+    render()
+    app
+      .querySelector<HTMLInputElement>(`[data-line-id="${CSS.escape(line.id)}"] .line-title`)
+      ?.focus()
+  } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault()
+    const next = visible[index + (event.key === "ArrowDown" ? 1 : -1)]
+    if (next === undefined) return
+    selectedLineId = next.id
+    render()
+  }
+})
 window.setInterval(() => {
   timerNowMs = Date.now()
   checkTaskAlarms()

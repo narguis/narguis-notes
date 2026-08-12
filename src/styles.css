@@ -564,6 +564,12 @@ textarea::placeholder {
 .planner-line.dragging {
   opacity: 0.45;
 }
+.planner-line.selected {
+  outline: 2px solid #c87942;
+  outline-offset: 3px;
+  border-radius: 3px;
+  z-index: 1;
+}
 .planner-line.drop-target {
   border-top: 3px solid #416b7a;
 }
@@ -643,6 +649,10 @@ textarea::placeholder {
   color: var(--ink);
   border: 0;
   background: transparent;
+}
+.line-title {
+  padding: 0 3px;
+  min-height: 32px;
 }
 .line-title-display {
   width: 100%;
